@@ -19,32 +19,34 @@ import torch
 
 from transformers import AutoConfig, AutoModelForCausalLM, \
                          MptConfig, MptForCausalLM, MptModel
-from llava.model.llava_arch import LlavaMetaModel, LlavaMetaForCausalLM
 
 
-class LlavaMptConfig(MptConfig):
-    model_type = "llava_mpt"
+from ..pannot_arch import PannotMetaModel, PannotMetaForCausalLM
 
 
-class LlavaMptModel(LlavaMetaModel, MptModel):
-    config_class = LlavaMptConfig
+class PannotMptConfig(MptConfig):
+    model_type = "pannot_mpt"
+
+
+class PannotMptModel(PannotMetaModel, MptModel):
+    config_class = PannotMptConfig
 
     def __init__(self, config: MptConfig):
         config.hidden_size = config.d_model
-        super(LlavaMptModel, self).__init__(config)
+        super(PannotMptModel, self).__init__(config)
     
     def embed_tokens(self, x):
         return self.wte(x)
 
 
-class LlavaMptForCausalLM(MptForCausalLM, LlavaMetaForCausalLM):
-    config_class = LlavaMptConfig
+class PannotMptForCausalLM(MptForCausalLM, PannotMetaForCausalLM):
+    config_class = PannotMptConfig
     supports_gradient_checkpointing = True
 
     def __init__(self, config):
         super(MptForCausalLM, self).__init__(config)
 
-        self.transformer = LlavaMptModel(config)
+        self.transformer = PannotMptModel(config)
         self.lm_head = torch.nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
         # Initialize weights and apply final processing
@@ -54,7 +56,7 @@ class LlavaMptForCausalLM(MptForCausalLM, LlavaMetaForCausalLM):
         return self.transformer
 
     def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, LlavaMptModel):
+        if isinstance(module, PannotMptModel):
             module.gradient_checkpointing = value
 
     def forward(
@@ -93,5 +95,5 @@ class LlavaMptForCausalLM(MptForCausalLM, LlavaMetaForCausalLM):
         return _inputs
 
 
-AutoConfig.register("llava_mpt", LlavaMptConfig)
-AutoModelForCausalLM.register(LlavaMptConfig, LlavaMptForCausalLM)
+AutoConfig.register("pannot_mpt", PannotMptConfig)
+AutoModelForCausalLM.register(PannotMptConfig, PannotMptForCausalLM)

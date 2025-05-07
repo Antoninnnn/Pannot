@@ -24,27 +24,26 @@ from transformers import AutoConfig, AutoModelForCausalLM, \
 
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.generation.utils import GenerateOutput
-
-from ..llava_arch import LlavaMetaModel, LlavaMetaForCausalLM
-
-
-class LlavaMistralConfig(MistralConfig):
-    model_type = "llava_mistral"
+from ..pannot_arch import PannotMetaModel, PannotMetaForCausalLM
 
 
-class LlavaMistralModel(LlavaMetaModel, MistralModel):
-    config_class = LlavaMistralConfig
+class PannotMistralConfig(MistralConfig):
+    model_type = "pannot_mistral"
+
+
+class PannotMistralModel(PannotMetaModel, MistralModel):
+    config_class = PannotMistralConfig
 
     def __init__(self, config: MistralConfig):
-        super(LlavaMistralModel, self).__init__(config)
+        super(PannotMistralModel, self).__init__(config)
 
 
-class LlavaMistralForCausalLM(MistralForCausalLM, LlavaMetaForCausalLM):
-    config_class = LlavaMistralConfig
+class PannotMistralForCausalLM(MistralForCausalLM, PannotMetaForCausalLM):
+    config_class = PannotMistralConfig
 
     def __init__(self, config):
         super(MistralForCausalLM, self).__init__(config)
-        self.model = LlavaMistralModel(config)
+        self.model = PannotMistralModel(config)
 
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
@@ -154,5 +153,5 @@ class LlavaMistralForCausalLM(MistralForCausalLM, LlavaMetaForCausalLM):
             inputs['image_sizes'] = image_sizes
         return inputs
 
-AutoConfig.register("llava_mistral", LlavaMistralConfig)
-AutoModelForCausalLM.register(LlavaMistralConfig, LlavaMistralForCausalLM)
+AutoConfig.register("pannot_mistral", PannotMistralConfig)
+AutoModelForCausalLM.register(PannotMistralConfig, PannotMistralForCausalLM)

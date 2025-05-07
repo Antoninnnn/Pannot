@@ -24,26 +24,26 @@ from transformers import AutoConfig, AutoModelForCausalLM, \
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.generation.utils import GenerateOutput
 
-from ..llava_arch import LlavaMetaModel, LlavaMetaForCausalLM
+from ..pannot_arch import PannotMetaModel, PannotMetaForCausalLM
 
 
-class LlavaConfig(LlamaConfig):
-    model_type = "llava_llama"
+class PannotConfig(LlamaConfig):
+    model_type = "pannot_llama"
 
 
-class LlavaLlamaModel(LlavaMetaModel, LlamaModel):
-    config_class = LlavaConfig
+class PannotLlamaModel(PannotMetaModel, LlamaModel):
+    config_class = PannotConfig
 
     def __init__(self, config: LlamaConfig):
-        super(LlavaLlamaModel, self).__init__(config)
+        super(PannotLlamaModel, self).__init__(config)
 
 
-class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
-    config_class = LlavaConfig
+class PannotLlamaForCausalLM(LlamaForCausalLM, PannotMetaForCausalLM):
+    config_class = PannotConfig
 
     def __init__(self, config):
         super(LlamaForCausalLM, self).__init__(config)
-        self.model = LlavaLlamaModel(config)
+        self.model = PannotLlamaModel(config)
         self.pretraining_tp = config.pretraining_tp
         self.vocab_size = config.vocab_size
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
@@ -154,5 +154,5 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
             inputs['image_sizes'] = image_sizes
         return inputs
 
-AutoConfig.register("llava_llama", LlavaConfig)
-AutoModelForCausalLM.register(LlavaConfig, LlavaLlamaForCausalLM)
+AutoConfig.register("pannot_llama", PannotConfig)
+AutoModelForCausalLM.register(PannotConfig, PannotLlamaForCausaLM)
