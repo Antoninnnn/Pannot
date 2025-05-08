@@ -5,7 +5,7 @@ from .clip_encoder import ProtSTEncoder
 def build_protein_encoder(protein_encoder_cfg, **kwargs):
     protein_encoder = getattr(protein_encoder_cfg, 'protein_encoder', None)
     if protein_encoder == 'ProtST':
-        return ProteinSequenceEncoder(model_name='DeepGraphLearning/ProtST', args=protein_encoder_cfg, **kwargs)
+        return ProtSTEncoder(model_name='DeepGraphLearning/ProtST', args=protein_encoder_cfg, **kwargs)
 
     raise ValueError(f'Unknown protein encoder: {protein_encoder}')
 

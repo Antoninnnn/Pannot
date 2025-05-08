@@ -21,15 +21,15 @@ import torch.nn as nn
 from .multimodal_encoder.builder import build_vision_tower
 from .multimodal_projector.builder import build_vision_projector
 
-from llava.constants import IGNORE_INDEX, IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
+from pannot.constants import IGNORE_INDEX, IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 
-from llava.mm_utils import get_anyres_image_grid_shape
+from pannot.mm_utils import get_anyres_image_grid_shape
 
 
-class LlavaMetaModel:
+class PannotMetaModel:
 
     def __init__(self, config):
-        super(LlavaMetaModel, self).__init__(config)
+        super(PannotMetaModel, self).__init__(config)
 
         if hasattr(config, "mm_vision_tower"):
             self.vision_tower = build_vision_tower(config, delay_load=True)
@@ -128,7 +128,7 @@ def unpad_image(tensor, original_size):
     return unpadded_tensor
 
 
-class LlavaMetaForCausalLM(ABC):
+class LlavaMetaForCaupannot(ABC):
 
     @abstractmethod
     def get_model(self):
