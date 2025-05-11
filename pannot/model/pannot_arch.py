@@ -21,7 +21,8 @@ import torch.nn as nn
 from .multimodal_encoder.builder import build_vision_tower
 from .multimodal_projector.builder import build_vision_projector
 
-from pannot.constants import IGNORE_INDEX, IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
+# from pannot.constants import IGNORE_INDEX, IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
+from pannot.constants import IGNORE_INDEX, SEQ_TOKEN_INDEX, DEFAULT_SEQ_TOKEN, DEFAULT_SEQ_PATCH_TOKEN ,DEFAULT_SEQ_START_TOKEN ,DEFAULT_SEQ_END_TOKEN ,STR_TOKEN_INDEX ,DEFAULT_STR_TOKEN ,DEFAULT_STR_PATCH_TOKEN ,DEFAULT_STR_START_TOKEN ,DEFAULT_STR_END_TOKEN 
 
 from pannot.mm_utils import get_anyres_image_grid_shape
 
@@ -31,318 +32,329 @@ class PannotMetaModel:
     def __init__(self, config):
         super(PannotMetaModel, self).__init__(config)
 
-        if hasattr(config, "mm_vision_tower"):
-            self.vision_tower = build_vision_tower(config, delay_load=True)
-            self.mm_projector = build_vision_projector(config)
+        if hasattr(config, "mm_seq_tower"):
+            self.seq_tower = build_seq_tower(config, delay_load=True)
+            self.mm_seq_projector = build_seq_projector(config)
 
-            if 'unpad' in getattr(config, 'mm_patch_merge_type', ''):
-                self.image_newline = nn.Parameter(
-                    torch.empty(config.hidden_size, dtype=self.dtype)
-                )
+        if hasattr(config, "mm_str_tower"):
+            self.str_tower = build_str_tower(config, delay_load=True)
+            self.mm_str_projector = build_str_projector(config)
 
-    def get_vision_tower(self):
-        vision_tower = getattr(self, 'vision_tower', None)
-        if type(vision_tower) is list:
-            vision_tower = vision_tower[0]
-        return vision_tower
+    def get_seq_tower(self):
+        return getattr(self, 'seq_tower', None)
 
-    def initialize_vision_modules(self, model_args, fsdp=None):
-        vision_tower = model_args.vision_tower
-        mm_vision_select_layer = model_args.mm_vision_select_layer
-        mm_vision_select_feature = model_args.mm_vision_select_feature
-        pretrain_mm_mlp_adapter = model_args.pretrain_mm_mlp_adapter
-        mm_patch_merge_type = model_args.mm_patch_merge_type
+    def get_str_tower(self):
+        return getattr(self, 'str_tower', None)
 
-        self.config.mm_vision_tower = vision_tower
+    def initialize_seq_modules(self, model_args, fsdp=None):
+        self.config.mm_seq_tower = model_args.seq_tower
+        self.config.mm_seq_select_layer = model_args.mm_seq_select_layer
+        self.config.mm_seq_select_feature = model_args.mm_seq_select_feature
+        self.config.use_mm_seq_proj = True
 
-        if self.get_vision_tower() is None:
-            vision_tower = build_vision_tower(model_args)
-
-            if fsdp is not None and len(fsdp) > 0:
-                self.vision_tower = [vision_tower]
-            else:
-                self.vision_tower = vision_tower
+        if self.get_seq_tower() is None:
+            seq_tower = build_seq_tower(model_args)
+            self.seq_tower = [seq_tower] if fsdp else seq_tower
         else:
-            if fsdp is not None and len(fsdp) > 0:
-                vision_tower = self.vision_tower[0]
-            else:
-                vision_tower = self.vision_tower
-            vision_tower.load_model()
+            seq_tower = self.seq_tower[0] if fsdp else self.seq_tower
+            seq_tower.load_model()
 
-        self.config.use_mm_proj = True
-        self.config.mm_projector_type = getattr(model_args, 'mm_projector_type', 'linear')
-        self.config.mm_hidden_size = vision_tower.hidden_size
-        self.config.mm_vision_select_layer = mm_vision_select_layer
-        self.config.mm_vision_select_feature = mm_vision_select_feature
-        self.config.mm_patch_merge_type = mm_patch_merge_type
+        self.config.mm_seq_hidden_size = seq_tower.hidden_size
+        self.config.mm_seq_projector_type = getattr(model_args, 'mm_seq_projector_type', 'linear')
 
-        if getattr(self, 'mm_projector', None) is None:
-            self.mm_projector = build_vision_projector(self.config)
-
-            if 'unpad' in mm_patch_merge_type:
-                embed_std = 1 / torch.sqrt(torch.tensor(self.config.hidden_size, dtype=self.dtype))
-                self.image_newline = nn.Parameter(
-                    torch.randn(self.config.hidden_size, dtype=self.dtype) * embed_std
-                )
+        if getattr(self, 'mm_seq_projector', None) is None:
+            self.mm_seq_projector = build_seq_projector(self.config)
         else:
-            # In case it is frozen by LoRA
-            for p in self.mm_projector.parameters():
+            for p in self.mm_seq_projector.parameters():
                 p.requires_grad = True
 
-        if pretrain_mm_mlp_adapter is not None:
-            mm_projector_weights = torch.load(pretrain_mm_mlp_adapter, map_location='cpu')
-            def get_w(weights, keyword):
-                return {k.split(keyword + '.')[1]: v for k, v in weights.items() if keyword in k}
+        if model_args.pretrain_mm_seq_mlp_adapter is not None:
+            seq_projector_weights = torch.load(model_args.pretrain_mm_seq_mlp_adapter, map_location='cpu')
+            self.mm_seq_projector.load_state_dict(
+                {k.split('mm_seq_projector.')[1]: v for k, v in seq_projector_weights.items() if 'mm_seq_projector' in k}
+            )
 
-            self.mm_projector.load_state_dict(get_w(mm_projector_weights, 'mm_projector'))
+    def initialize_str_modules(self, model_args, fsdp=None):
+        self.config.mm_str_tower = model_args.str_tower
+        self.config.mm_str_select_layer = model_args.mm_str_select_layer
+        self.config.mm_str_select_feature = model_args.mm_str_select_feature
+        self.config.use_mm_str_proj = True
+
+        if self.get_str_tower() is None:
+            str_tower = build_str_tower(model_args)
+            self.str_tower = [str_tower] if fsdp else str_tower
+        else:
+            str_tower = self.str_tower[0] if fsdp else self.str_tower
+            str_tower.load_model()
+
+        self.config.mm_str_hidden_size = str_tower.hidden_size
+        self.config.mm_str_projector_type = getattr(model_args, 'mm_str_projector_type', 'linear')
+
+        if getattr(self, 'mm_str_projector', None) is None:
+            self.mm_str_projector = build_str_projector(self.config)
+        else:
+            for p in self.mm_str_projector.parameters():
+                p.requires_grad = True
+
+        if model_args.pretrain_mm_str_mlp_adapter is not None:
+            str_projector_weights = torch.load(model_args.pretrain_mm_str_mlp_adapter, map_location='cpu')
+            self.mm_str_projector.load_state_dict(
+                {k.split('mm_str_projector.')[1]: v for k, v in str_projector_weights.items() if 'mm_str_projector' in k}
+            )
+
+# class PannotMetaModel:
+
+#     def __init__(self, config):
+#         super(PannotMetaModel, self).__init__(config)
+
+#         if hasattr(config, "mm_vision_tower"):
+#             self.vision_tower = build_vision_tower(config, delay_load=True)
+#             self.mm_projector = build_vision_projector(config)
+
+#             if 'unpad' in getattr(config, 'mm_patch_merge_type', ''):
+#                 self.image_newline = nn.Parameter(
+#                     torch.empty(config.hidden_size, dtype=self.dtype)
+#                 )
+
+#     def get_vision_tower(self):
+#         vision_tower = getattr(self, 'vision_tower', None)
+#         if type(vision_tower) is list:
+#             vision_tower = vision_tower[0]
+#         return vision_tower
+
+#     def initialize_vision_modules(self, model_args, fsdp=None):
+#         vision_tower = model_args.vision_tower
+#         mm_vision_select_layer = model_args.mm_vision_select_layer
+#         mm_vision_select_feature = model_args.mm_vision_select_feature
+#         pretrain_mm_mlp_adapter = model_args.pretrain_mm_mlp_adapter
+#         mm_patch_merge_type = model_args.mm_patch_merge_type
+
+#         self.config.mm_vision_tower = vision_tower
+
+#         if self.get_vision_tower() is None:
+#             vision_tower = build_vision_tower(model_args)
+
+#             if fsdp is not None and len(fsdp) > 0:
+#                 self.vision_tower = [vision_tower]
+#             else:
+#                 self.vision_tower = vision_tower
+#         else:
+#             if fsdp is not None and len(fsdp) > 0:
+#                 vision_tower = self.vision_tower[0]
+#             else:
+#                 vision_tower = self.vision_tower
+#             vision_tower.load_model()
+
+#         self.config.use_mm_proj = True
+#         self.config.mm_projector_type = getattr(model_args, 'mm_projector_type', 'linear')
+#         self.config.mm_hidden_size = vision_tower.hidden_size
+#         self.config.mm_vision_select_layer = mm_vision_select_layer
+#         self.config.mm_vision_select_feature = mm_vision_select_feature
+#         self.config.mm_patch_merge_type = mm_patch_merge_type
+
+#         if getattr(self, 'mm_projector', None) is None:
+#             self.mm_projector = build_vision_projector(self.config)
+
+#             if 'unpad' in mm_patch_merge_type:
+#                 embed_std = 1 / torch.sqrt(torch.tensor(self.config.hidden_size, dtype=self.dtype))
+#                 self.image_newline = nn.Parameter(
+#                     torch.randn(self.config.hidden_size, dtype=self.dtype) * embed_std
+#                 )
+#         else:
+#             # In case it is frozen by LoRA
+#             for p in self.mm_projector.parameters():
+#                 p.requires_grad = True
+
+#         if pretrain_mm_mlp_adapter is not None:
+#             mm_projector_weights = torch.load(pretrain_mm_mlp_adapter, map_location='cpu')
+#             def get_w(weights, keyword):
+#                 return {k.split(keyword + '.')[1]: v for k, v in weights.items() if keyword in k}
+
+#             self.mm_projector.load_state_dict(get_w(mm_projector_weights, 'mm_projector'))
 
 
-def unpad_image(tensor, original_size):
-    """
-    Unpads a PyTorch tensor of a padded and resized image.
+# def unpad_image(tensor, original_size):
+#     """
+#     Unpads a PyTorch tensor of a padded and resized image.
 
-    Args:
-    tensor (torch.Tensor): The image tensor, assumed to be in CxHxW format.
-    original_size (tuple): The original size of PIL image (width, height).
+#     Args:
+#     tensor (torch.Tensor): The image tensor, assumed to be in CxHxW format.
+#     original_size (tuple): The original size of PIL image (width, height).
 
-    Returns:
-    torch.Tensor: The unpadded image tensor.
-    """
-    original_width, original_height = original_size
-    current_height, current_width = tensor.shape[1:]
+#     Returns:
+#     torch.Tensor: The unpadded image tensor.
+#     """
+#     original_width, original_height = original_size
+#     current_height, current_width = tensor.shape[1:]
 
-    original_aspect_ratio = original_width / original_height
-    current_aspect_ratio = current_width / current_height
+#     original_aspect_ratio = original_width / original_height
+#     current_aspect_ratio = current_width / current_height
 
-    if original_aspect_ratio > current_aspect_ratio:
-        scale_factor = current_width / original_width
-        new_height = int(original_height * scale_factor)
-        padding = (current_height - new_height) // 2
-        unpadded_tensor = tensor[:, padding:current_height - padding, :]
-    else:
-        scale_factor = current_height / original_height
-        new_width = int(original_width * scale_factor)
-        padding = (current_width - new_width) // 2
-        unpadded_tensor = tensor[:, :, padding:current_width - padding]
+#     if original_aspect_ratio > current_aspect_ratio:
+#         scale_factor = current_width / original_width
+#         new_height = int(original_height * scale_factor)
+#         padding = (current_height - new_height) // 2
+#         unpadded_tensor = tensor[:, padding:current_height - padding, :]
+#     else:
+#         scale_factor = current_height / original_height
+#         new_width = int(original_width * scale_factor)
+#         padding = (current_width - new_width) // 2
+#         unpadded_tensor = tensor[:, :, padding:current_width - padding]
 
-    return unpadded_tensor
+#     return unpadded_tensor
 
 
-class LlavaMetaForCaupannot(ABC):
+class PannotMetaForCausalLM(ABC):
 
     @abstractmethod
     def get_model(self):
         pass
 
-    def get_vision_tower(self):
-        return self.get_model().get_vision_tower()
+    def get_seq_tower(self):
+        return self.get_model().get_seq_tower()
 
-    def encode_images(self, images):
-        image_features = self.get_model().get_vision_tower()(images)
-        image_features = self.get_model().mm_projector(image_features)
-        return image_features
+    def get_str_tower(self):
+        return self.get_model().get_str_tower()
+
+    def encode_seqs(self, seqs):
+        seq_features = self.get_seq_tower()(seqs)
+        seq_features = self.get_model().seq_projector(seq_features)
+        return seq_features
+
+    def encode_strs(self, strs):
+        str_features = self.get_str_tower()(strs)
+        str_features = self.get_model().str_projector(str_features)
+        return str_features
 
     def prepare_inputs_labels_for_multimodal(
         self, input_ids, position_ids, attention_mask, past_key_values, labels,
-        images, image_sizes=None
+        seqs=None, strs=None
     ):
-        vision_tower = self.get_vision_tower()
-        if vision_tower is None or images is None or input_ids.shape[1] == 1:
+        seq_tower = self.get_seq_tower()
+        str_tower = self.get_str_tower()
+
+
+        if seq_tower is None and str_tower is None or input_ids.shape[1] == 1:
             return input_ids, position_ids, attention_mask, past_key_values, None, labels
 
-        if type(images) is list or images.ndim == 5:
-            if type(images) is list:
-                images = [x.unsqueeze(0) if x.ndim == 3 else x for x in images]
-            concat_images = torch.cat([image for image in images], dim=0)
-            image_features = self.encode_images(concat_images)
-            split_sizes = [image.shape[0] for image in images]
-            image_features = torch.split(image_features, split_sizes, dim=0)
-            mm_patch_merge_type = getattr(self.config, 'mm_patch_merge_type', 'flat')
-            image_aspect_ratio = getattr(self.config, 'image_aspect_ratio', 'square')
-            if mm_patch_merge_type == 'flat':
-                image_features = [x.flatten(0, 1) for x in image_features]
-            elif mm_patch_merge_type.startswith('spatial'):
-                new_image_features = []
-                for image_idx, image_feature in enumerate(image_features):
-                    if image_feature.shape[0] > 1:
-                        base_image_feature = image_feature[0]
-                        image_feature = image_feature[1:]
-                        height = width = self.get_vision_tower().num_patches_per_side
-                        assert height * width == base_image_feature.shape[0]
-                        if image_aspect_ratio == 'anyres':
-                            num_patch_width, num_patch_height = get_anyres_image_grid_shape(image_sizes[image_idx], self.config.image_grid_pinpoints, self.get_vision_tower().config.image_size)
-                            image_feature = image_feature.view(num_patch_height, num_patch_width, height, width, -1)
-                        else:
-                            raise NotImplementedError
-                        if 'unpad' in mm_patch_merge_type:
-                            image_feature = image_feature.permute(4, 0, 2, 1, 3).contiguous()
-                            image_feature = image_feature.flatten(1, 2).flatten(2, 3)
-                            image_feature = unpad_image(image_feature, image_sizes[image_idx])
-                            image_feature = torch.cat((
-                                image_feature,
-                                self.model.image_newline[:, None, None].expand(*image_feature.shape[:-1], 1).to(image_feature.device)
-                            ), dim=-1)
-                            image_feature = image_feature.flatten(1, 2).transpose(0, 1)
-                        else:
-                            image_feature = image_feature.permute(0, 2, 1, 3, 4).contiguous()
-                            image_feature = image_feature.flatten(0, 3)
-                        image_feature = torch.cat((base_image_feature, image_feature), dim=0)
-                    else:
-                        image_feature = image_feature[0]
-                        if 'unpad' in mm_patch_merge_type:
-                            image_feature = torch.cat((
-                                image_feature,
-                                self.model.image_newline[None].to(image_feature.device)
-                            ), dim=0)
-                    new_image_features.append(image_feature)
-                image_features = new_image_features
-            else:
-                raise ValueError(f"Unexpected mm_patch_merge_type: {self.config.mm_patch_merge_type}")
-        else:
-            image_features = self.encode_images(images)
-
-        # TODO: image start / end is not implemented here to support pretraining.
-        if getattr(self.config, 'tune_mm_mlp_adapter', False) and getattr(self.config, 'mm_use_im_start_end', False):
-            raise NotImplementedError
-
-        # Let's just add dummy tensors if they do not exist,
-        # it is a headache to deal with None all the time.
-        # But it is not ideal, and if you have a better idea,
-        # please open an issue / submit a PR, thanks.
-        _labels = labels
-        _position_ids = position_ids
-        _attention_mask = attention_mask
         if attention_mask is None:
             attention_mask = torch.ones_like(input_ids, dtype=torch.bool)
         else:
             attention_mask = attention_mask.bool()
+
         if position_ids is None:
             position_ids = torch.arange(0, input_ids.shape[1], dtype=torch.long, device=input_ids.device)
+
         if labels is None:
             labels = torch.full_like(input_ids, IGNORE_INDEX)
 
-        # remove the padding using attention_mask -- FIXME
+        # Remove padding
         _input_ids = input_ids
         input_ids = [cur_input_ids[cur_attention_mask] for cur_input_ids, cur_attention_mask in zip(input_ids, attention_mask)]
         labels = [cur_labels[cur_attention_mask] for cur_labels, cur_attention_mask in zip(labels, attention_mask)]
 
         new_input_embeds = []
         new_labels = []
-        cur_image_idx = 0
+        cur_seq_idx = 0
+        cur_str_idx = 0
+
         for batch_idx, cur_input_ids in enumerate(input_ids):
-            num_images = (cur_input_ids == IMAGE_TOKEN_INDEX).sum()
-            if num_images == 0:
-                cur_image_features = image_features[cur_image_idx]
-                cur_input_embeds_1 = self.get_model().embed_tokens(cur_input_ids)
-                cur_input_embeds = torch.cat([cur_input_embeds_1, cur_image_features[0:0]], dim=0)
-                new_input_embeds.append(cur_input_embeds)
-                new_labels.append(labels[batch_idx])
-                cur_image_idx += 1
-                continue
-
-            image_token_indices = [-1] + torch.where(cur_input_ids == IMAGE_TOKEN_INDEX)[0].tolist() + [cur_input_ids.shape[0]]
-            cur_input_ids_noim = []
             cur_labels = labels[batch_idx]
-            cur_labels_noim = []
-            for i in range(len(image_token_indices) - 1):
-                cur_input_ids_noim.append(cur_input_ids[image_token_indices[i]+1:image_token_indices[i+1]])
-                cur_labels_noim.append(cur_labels[image_token_indices[i]+1:image_token_indices[i+1]])
-            split_sizes = [x.shape[0] for x in cur_labels_noim]
-            cur_input_embeds = self.get_model().embed_tokens(torch.cat(cur_input_ids_noim))
-            cur_input_embeds_no_im = torch.split(cur_input_embeds, split_sizes, dim=0)
-            cur_new_input_embeds = []
-            cur_new_labels = []
+            cur_input_embeds_no_special = []
+            cur_labels_no_special = []
 
-            for i in range(num_images + 1):
-                cur_new_input_embeds.append(cur_input_embeds_no_im[i])
-                cur_new_labels.append(cur_labels_noim[i])
-                if i < num_images:
-                    cur_image_features = image_features[cur_image_idx]
-                    cur_image_idx += 1
-                    cur_new_input_embeds.append(cur_image_features)
-                    cur_new_labels.append(torch.full((cur_image_features.shape[0],), IGNORE_INDEX, device=cur_labels.device, dtype=cur_labels.dtype))
+            token_indices = {
+                SEQ_TOKEN_INDEX: torch.where(cur_input_ids == SEQ_TOKEN_INDEX)[0].tolist(),
+                STR_TOKEN_INDEX: torch.where(cur_input_ids == STR_TOKEN_INDEX)[0].tolist()
+            }
 
-            cur_new_input_embeds = [x.to(self.device) for x in cur_new_input_embeds]
+            # Break input around special tokens
+            all_specials = sorted([(i, 'seq') for i in token_indices[SEQ_TOKEN_INDEX]] +
+                                  [(i, 'str') for i in token_indices[STR_TOKEN_INDEX]])
+            all_specials = [(-1, None)] + all_specials + [(cur_input_ids.shape[0], None)]
 
-            cur_new_input_embeds = torch.cat(cur_new_input_embeds)
-            cur_new_labels = torch.cat(cur_new_labels)
+            cur_embed_segments = []
+            cur_label_segments = []
 
-            new_input_embeds.append(cur_new_input_embeds)
-            new_labels.append(cur_new_labels)
+            for i in range(len(all_specials) - 1):
+                start = all_specials[i][0] + 1
+                end = all_specials[i + 1][0]
+                cur_embed_segments.append(self.get_model().embed_tokens(cur_input_ids[start:end]))
+                cur_label_segments.append(cur_labels[start:end])
 
-        # Truncate sequences to max length as image embeddings can make the sequence longer
+                # Add special modality features
+                if all_specials[i + 1][1] == 'seq':
+                    seq_feature = self.encode_seqs(seqs[cur_seq_idx])
+                    cur_embed_segments.append(seq_feature)
+                    cur_label_segments.append(torch.full((seq_feature.shape[0],), IGNORE_INDEX, dtype=cur_labels.dtype, device=cur_labels.device))
+                    cur_seq_idx += 1
+                elif all_specials[i + 1][1] == 'str':
+                    str_feature = self.encode_strs(strs[cur_str_idx])
+                    cur_embed_segments.append(str_feature)
+                    cur_label_segments.append(torch.full((str_feature.shape[0],), IGNORE_INDEX, dtype=cur_labels.dtype, device=cur_labels.device))
+                    cur_str_idx += 1
+
+            final_embed = torch.cat(cur_embed_segments, dim=0).to(self.device)
+            final_labels = torch.cat(cur_label_segments, dim=0).to(self.device)
+
+            new_input_embeds.append(final_embed)
+            new_labels.append(final_labels)
+
+        # Truncate and pad
         tokenizer_model_max_length = getattr(self.config, 'tokenizer_model_max_length', None)
         if tokenizer_model_max_length is not None:
             new_input_embeds = [x[:tokenizer_model_max_length] for x in new_input_embeds]
             new_labels = [x[:tokenizer_model_max_length] for x in new_labels]
 
-        # Combine them
         max_len = max(x.shape[0] for x in new_input_embeds)
         batch_size = len(new_input_embeds)
 
         new_input_embeds_padded = []
         new_labels_padded = torch.full((batch_size, max_len), IGNORE_INDEX, dtype=new_labels[0].dtype, device=new_labels[0].device)
-        attention_mask = torch.zeros((batch_size, max_len), dtype=attention_mask.dtype, device=attention_mask.device)
-        position_ids = torch.zeros((batch_size, max_len), dtype=position_ids.dtype, device=position_ids.device)
+        attention_mask = torch.zeros((batch_size, max_len), dtype=torch.bool, device=new_labels[0].device)
+        position_ids = torch.zeros((batch_size, max_len), dtype=torch.long, device=new_labels[0].device)
 
-        for i, (cur_new_embed, cur_new_labels) in enumerate(zip(new_input_embeds, new_labels)):
-            cur_len = cur_new_embed.shape[0]
-            if getattr(self.config, 'tokenizer_padding_side', 'right') == "left":
-                new_input_embeds_padded.append(torch.cat((
-                    torch.zeros((max_len - cur_len, cur_new_embed.shape[1]), dtype=cur_new_embed.dtype, device=cur_new_embed.device),
-                    cur_new_embed
-                ), dim=0))
-                if cur_len > 0:
-                    new_labels_padded[i, -cur_len:] = cur_new_labels
-                    attention_mask[i, -cur_len:] = True
-                    position_ids[i, -cur_len:] = torch.arange(0, cur_len, dtype=position_ids.dtype, device=position_ids.device)
+        for i, (emb, lab) in enumerate(zip(new_input_embeds, new_labels)):
+            cur_len = emb.shape[0]
+            padding_side = getattr(self.config, 'tokenizer_padding_side', 'right')
+
+            if padding_side == "left":
+                padded = torch.cat([torch.zeros((max_len - cur_len, emb.shape[1]), device=emb.device), emb], dim=0)
+                new_input_embeds_padded.append(padded)
+                new_labels_padded[i, -cur_len:] = lab
+                attention_mask[i, -cur_len:] = True
+                position_ids[i, -cur_len:] = torch.arange(cur_len, device=emb.device)
             else:
-                new_input_embeds_padded.append(torch.cat((
-                    cur_new_embed,
-                    torch.zeros((max_len - cur_len, cur_new_embed.shape[1]), dtype=cur_new_embed.dtype, device=cur_new_embed.device)
-                ), dim=0))
-                if cur_len > 0:
-                    new_labels_padded[i, :cur_len] = cur_new_labels
-                    attention_mask[i, :cur_len] = True
-                    position_ids[i, :cur_len] = torch.arange(0, cur_len, dtype=position_ids.dtype, device=position_ids.device)
+                padded = torch.cat([emb, torch.zeros((max_len - cur_len, emb.shape[1]), device=emb.device)], dim=0)
+                new_input_embeds_padded.append(padded)
+                new_labels_padded[i, :cur_len] = lab
+                attention_mask[i, :cur_len] = True
+                position_ids[i, :cur_len] = torch.arange(cur_len, device=emb.device)
 
         new_input_embeds = torch.stack(new_input_embeds_padded, dim=0)
 
-        if _labels is None:
-            new_labels = None
-        else:
-            new_labels = new_labels_padded
-
-        if _attention_mask is None:
-            attention_mask = None
-        else:
-            attention_mask = attention_mask.to(dtype=_attention_mask.dtype)
-
-        if _position_ids is None:
-            position_ids = None
-
-        return None, position_ids, attention_mask, past_key_values, new_input_embeds, new_labels
-
-    def initialize_vision_tokenizer(self, model_args, tokenizer):
-        if model_args.mm_use_im_patch_token:
-            tokenizer.add_tokens([DEFAULT_IMAGE_PATCH_TOKEN], special_tokens=True)
+        return None, position_ids, attention_mask, past_key_values, new_input_embeds, new_labels_padded
+    
+    def initialize_seq_tokenizer(self, model_args, tokenizer):
+        if model_args.mm_use_seq_patch_token:
+            tokenizer.add_tokens([DEFAULT_SEQ_PATCH_TOKEN], special_tokens=True)
             self.resize_token_embeddings(len(tokenizer))
 
-        if model_args.mm_use_im_start_end:
-            num_new_tokens = tokenizer.add_tokens([DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN], special_tokens=True)
+        if model_args.mm_use_seq_start_end:
+            num_new_tokens = tokenizer.add_tokens(
+                [DEFAULT_SEQ_START_TOKEN, DEFAULT_SEQ_END_TOKEN], special_tokens=True
+            )
             self.resize_token_embeddings(len(tokenizer))
 
             if num_new_tokens > 0:
                 input_embeddings = self.get_input_embeddings().weight.data
                 output_embeddings = self.get_output_embeddings().weight.data
 
-                input_embeddings_avg = input_embeddings[:-num_new_tokens].mean(
-                    dim=0, keepdim=True)
-                output_embeddings_avg = output_embeddings[:-num_new_tokens].mean(
-                    dim=0, keepdim=True)
+                input_avg = input_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
+                output_avg = output_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
 
-                input_embeddings[-num_new_tokens:] = input_embeddings_avg
-                output_embeddings[-num_new_tokens:] = output_embeddings_avg
+                input_embeddings[-num_new_tokens:] = input_avg
+                output_embeddings[-num_new_tokens:] = output_avg
 
             if model_args.tune_mm_mlp_adapter:
                 for p in self.get_input_embeddings().parameters():
@@ -359,10 +371,347 @@ class LlavaMetaForCaupannot(ABC):
                 elif embed_tokens_weight.shape[0] == num_new_tokens:
                     input_embeddings[-num_new_tokens:] = embed_tokens_weight
                 else:
-                    raise ValueError(f"Unexpected embed_tokens_weight shape. Pretrained: {embed_tokens_weight.shape}. Current: {input_embeddings.shape}. Numer of new tokens: {num_new_tokens}.")
-        elif model_args.mm_use_im_patch_token:
+                    raise ValueError(
+                        f"Unexpected embed_tokens_weight shape. "
+                        f"Pretrained: {embed_tokens_weight.shape}. Current: {input_embeddings.shape}. "
+                        f"Number of new tokens: {num_new_tokens}."
+                    )
+        elif model_args.mm_use_seq_patch_token:
             if model_args.tune_mm_mlp_adapter:
                 for p in self.get_input_embeddings().parameters():
                     p.requires_grad = False
                 for p in self.get_output_embeddings().parameters():
                     p.requires_grad = False
+
+    def initialize_str_tokenizer(self, model_args, tokenizer):
+        if model_args.mm_use_str_patch_token:
+            tokenizer.add_tokens([DEFAULT_STR_PATCH_TOKEN], special_tokens=True)
+            self.resize_token_embeddings(len(tokenizer))
+
+        if model_args.mm_use_str_start_end:
+            num_new_tokens = tokenizer.add_tokens(
+                [DEFAULT_STR_START_TOKEN, DEFAULT_STR_END_TOKEN], special_tokens=True
+            )
+            self.resize_token_embeddings(len(tokenizer))
+
+            if num_new_tokens > 0:
+                input_embeddings = self.get_input_embeddings().weight.data
+                output_embeddings = self.get_output_embeddings().weight.data
+
+                input_avg = input_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
+                output_avg = output_embeddings[:-num_new_tokens].mean(dim=0, keepdim=True)
+
+                input_embeddings[-num_new_tokens:] = input_avg
+                output_embeddings[-num_new_tokens:] = output_avg
+
+            if model_args.tune_mm_mlp_adapter:
+                for p in self.get_input_embeddings().parameters():
+                    p.requires_grad = True
+                for p in self.get_output_embeddings().parameters():
+                    p.requires_grad = False
+
+            if model_args.pretrain_mm_mlp_adapter:
+                mm_projector_weights = torch.load(model_args.pretrain_mm_mlp_adapter, map_location='cpu')
+                embed_tokens_weight = mm_projector_weights['model.embed_tokens.weight']
+                assert num_new_tokens == 2
+                if input_embeddings.shape == embed_tokens_weight.shape:
+                    input_embeddings[-num_new_tokens:] = embed_tokens_weight[-num_new_tokens:]
+                elif embed_tokens_weight.shape[0] == num_new_tokens:
+                    input_embeddings[-num_new_tokens:] = embed_tokens_weight
+                else:
+                    raise ValueError(
+                        f"Unexpected embed_tokens_weight shape. "
+                        f"Pretrained: {embed_tokens_weight.shape}. Current: {input_embeddings.shape}. "
+                        f"Number of new tokens: {num_new_tokens}."
+                    )
+        elif model_args.mm_use_str_patch_token:
+            if model_args.tune_mm_mlp_adapter:
+                for p in self.get_input_embeddings().parameters():
+                    p.requires_grad = False
+                for p in self.get_output_embeddings().parameters():
+                    p.requires_grad = False
+
+
+
+
+# class PannotMetaForCausalLM(ABC):
+
+#     @abstractmethod
+#     def get_model(self):
+#         pass
+
+#     def get_vision_tower(self):
+#         return self.get_model().get_vision_tower()
+
+#     def encode_images(self, images):
+#         image_features = self.get_model().get_vision_tower()(images)
+#         image_features = self.get_model().mm_projector(image_features)
+#         return image_features
+
+#     def prepare_inputs_labels_for_multimodal(
+#         self, input_ids, position_ids, attention_mask, past_key_values, labels,
+#         images, image_sizes=None
+#     ):
+#         # 获取视觉塔
+#         vision_tower = self.get_vision_tower()
+#         # 如果视觉塔为空，或者图像为空，或者输入id的形状为1，则返回输入id，位置id，注意力掩码，过去键值，和标签
+#         if vision_tower is None or images is None or input_ids.shape[1] == 1:
+#             return input_ids, position_ids, attention_mask, past_key_values, None, labels
+
+#         # 如果图像是列表或者图像的维度为5，则将图像拼接在一起，并编码图像
+#         if type(images) is list or images.ndim == 5:
+#             if type(images) is list:
+#                 images = [x.unsqueeze(0) if x.ndim == 3 else x for x in images]
+#             concat_images = torch.cat([image for image in images], dim=0)
+#             image_features = self.encode_images(concat_images)
+#             # 获取图像的分割大小
+#             split_sizes = [image.shape[0] for image in images]
+#             # 将图像特征分割
+#             image_features = torch.split(image_features, split_sizes, dim=0)
+#             # 获取图像块合并类型和图像宽高比
+#             mm_patch_merge_type = getattr(self.config, 'mm_patch_merge_type', 'flat')
+#             image_aspect_ratio = getattr(self.config, 'image_aspect_ratio', 'square')
+#             # 如果图像块合并类型为flat，则将图像特征展平
+#             if mm_patch_merge_type == 'flat':
+#                 image_features = [x.flatten(0, 1) for x in image_features]
+#             # 如果图像块合并类型以spatial开头，则进行空间合并
+#             elif mm_patch_merge_type.startswith('spatial'):
+#                 new_image_features = []
+#                 for image_idx, image_feature in enumerate(image_features):
+#                     if image_feature.shape[0] > 1:
+#                         base_image_feature = image_feature[0]
+#                         image_feature = image_feature[1:]
+#                         height = width = self.get_vision_tower().num_patches_per_side
+#                         assert height * width == base_image_feature.shape[0]
+#                         # 如果图像宽高比为anyres，则获取任意分辨率的图像网格形状
+#                         if image_aspect_ratio == 'anyres':
+#                             num_patch_width, num_patch_height = get_anyres_image_grid_shape(image_sizes[image_idx], self.config.image_grid_pinpoints, self.get_vision_tower().config.image_size)
+#                             image_feature = image_feature.view(num_patch_height, num_patch_width, height, width, -1)
+#                         else:
+#                             raise NotImplementedError
+#                         # 如果图像块合并类型包含unpad，则进行图像特征填充
+#                         if 'unpad' in mm_patch_merge_type:
+#                             image_feature = image_feature.permute(4, 0, 2, 1, 3).contiguous()
+#                             image_feature = image_feature.flatten(1, 2).flatten(2, 3)
+#                             image_feature = unpad_image(image_feature, image_sizes[image_idx])
+#                             image_feature = torch.cat((
+#                                 image_feature,
+#                                 self.model.image_newline[:, None, None].expand(*image_feature.shape[:-1], 1).to(image_feature.device)
+#                             ), dim=-1)
+#                             image_feature = image_feature.flatten(1, 2).transpose(0, 1)
+#                         else:
+#                             image_feature = image_feature.permute(0, 2, 1, 3, 4).contiguous()
+#                             image_feature = image_feature.flatten(0, 3)
+#                         # 将基础图像特征和图像特征拼接
+#                         image_feature = torch.cat((base_image_feature, image_feature), dim=0)
+#                     else:
+#                         image_feature = image_feature[0]
+#                         # 如果图像块合并类型包含unpad，则进行图像特征填充
+#                         if 'unpad' in mm_patch_merge_type:
+#                             image_feature = torch.cat((
+#                                 image_feature,
+#                                 self.model.image_newline[None].to(image_feature.device)
+#                             ), dim=0)
+#                     new_image_features.append(image_feature)
+#                 image_features = new_image_features
+#             else:
+#                 raise ValueError(f"Unexpected mm_patch_merge_type: {self.config.mm_patch_merge_type}")
+#         else:
+#             # 编码图像
+#             image_features = self.encode_images(images)
+
+#         # TODO: image start / end is not implemented here to support pretraining.
+#         # 如果配置中包含tune_mm_mlp_adapter和mm_use_im_start_end，则抛出未实现异常
+#         if getattr(self.config, 'tune_mm_mlp_adapter', False) and getattr(self.config, 'mm_use_im_start_end', False):
+#             raise NotImplementedError
+
+#         # Let's just add dummy tensors if they do not exist,
+#         # it is a headache to deal with None all the time.
+#         # But it is not ideal, and if you have a better idea,
+#         # please open an issue / submit a PR, thanks.
+#         # 如果注意力掩码为空，则将其设置为全1
+#         _labels = labels
+#         _position_ids = position_ids
+#         _attention_mask = attention_mask
+#         if attention_mask is None:
+#             attention_mask = torch.ones_like(input_ids, dtype=torch.bool)
+#         else:
+#             attention_mask = attention_mask.bool()
+#         # 如果位置id为空，则将其设置为从0到输入id形状的索引
+#         if position_ids is None:
+#             position_ids = torch.arange(0, input_ids.shape[1], dtype=torch.long, device=input_ids.device)
+#         # 如果标签为空，则将其设置为IGNORE_INDEX
+#         if labels is None:
+#             labels = torch.full_like(input_ids, IGNORE_INDEX)
+
+#         # remove the padding using attention_mask -- FIXME
+#         # 使用注意力掩码去除填充
+#         _input_ids = input_ids
+#         input_ids = [cur_input_ids[cur_attention_mask] for cur_input_ids, cur_attention_mask in zip(input_ids, attention_mask)]
+#         labels = [cur_labels[cur_attention_mask] for cur_labels, cur_attention_mask in zip(labels, attention_mask)]
+
+#         new_input_embeds = []
+#         new_labels = []
+#         cur_image_idx = 0
+#         # 遍历输入id
+#         for batch_idx, cur_input_ids in enumerate(input_ids):
+#             # 计算当前输入id中图像标记的数量
+#             num_images = (cur_input_ids == IMAGE_TOKEN_INDEX).sum()
+#             # 如果没有图像标记，则将当前输入id和图像特征拼接，并添加到新的输入嵌入中
+#             if num_images == 0:
+#                 cur_image_features = image_features[cur_image_idx]
+#                 cur_input_embeds_1 = self.get_model().embed_tokens(cur_input_ids)
+#                 cur_input_embeds = torch.cat([cur_input_embeds_1, cur_image_features[0:0]], dim=0)
+#                 new_input_embeds.append(cur_input_embeds)
+#                 new_labels.append(labels[batch_idx])
+#                 cur_image_idx += 1
+#                 continue
+
+#             # 获取图像标记的索引
+#             image_token_indices = [-1] + torch.where(cur_input_ids == IMAGE_TOKEN_INDEX)[0].tolist() + [cur_input_ids.shape[0]]
+#             cur_input_ids_noim = []
+#             cur_labels = labels[batch_idx]
+#             cur_labels_noim = []
+#             # 遍历图像标记索引
+#             for i in range(len(image_token_indices) - 1):
+#                 # 将图像标记之间的输入id和标签添加到列表中
+#                 cur_input_ids_noim.append(cur_input_ids[image_token_indices[i]+1:image_token_indices[i+1]])
+#                 cur_labels_noim.append(cur_labels[image_token_indices[i]+1:image_token_indices[i+1]])
+#             # 获取分割大小
+#             split_sizes = [x.shape[0] for x in cur_labels_noim]
+#             # 将输入id和标签拼接
+#             cur_input_embeds = self.get_model().embed_tokens(torch.cat(cur_input_ids_noim))
+#             cur_input_embeds_no_im = torch.split(cur_input_embeds, split_sizes, dim=0)
+#             cur_new_input_embeds = []
+#             cur_new_labels = []
+
+#             # 遍历图像标记数量加1
+#             for i in range(num_images + 1):
+#                 # 将输入id和标签添加到列表中
+#                 cur_new_input_embeds.append(cur_input_embeds_no_im[i])
+#                 cur_new_labels.append(cur_labels_noim[i])
+#                 # 如果不是最后一个图像标记，则将图像特征和IGNORE_INDEX添加到列表中
+#                 if i < num_images:
+#                     cur_image_features = image_features[cur_image_idx]
+#                     cur_image_idx += 1
+#                     cur_new_input_embeds.append(cur_image_features)
+#                     cur_new_labels.append(torch.full((cur_image_features.shape[0],), IGNORE_INDEX, device=cur_labels.device, dtype=cur_labels.dtype))
+
+#             # 将列表中的张量移动到设备上
+#             cur_new_input_embeds = [x.to(self.device) for x in cur_new_input_embeds]
+
+#             # 将列表中的张量拼接
+#             cur_new_input_embeds = torch.cat(cur_new_input_embeds)
+#             cur_new_labels = torch.cat(cur_new_labels)
+
+#             # 将新的输入嵌入和标签添加到列表中
+#             new_input_embeds.append(cur_new_input_embeds)
+#             new_labels.append(cur_new_labels)
+
+#         # Truncate sequences to max length as image embeddings can make the sequence longer
+#         # 将序列截断为最大长度，因为图像嵌入可以使序列更长
+#         tokenizer_model_max_length = getattr(self.config, 'tokenizer_model_max_length', None)
+#         if tokenizer_model_max_length is not None:
+#             new_input_embeds = [x[:tokenizer_model_max_length] for x in new_input_embeds]
+#             new_labels = [x[:tokenizer_model_max_length] for x in new_labels]
+
+#         # Combine them
+#         # 将它们组合在一起
+#         max_len = max(x.shape[0] for x in new_input_embeds)
+#         batch_size = len(new_input_embeds)
+
+#         new_input_embeds_padded = []
+#         new_labels_padded = torch.full((batch_size, max_len), IGNORE_INDEX, dtype=new_labels[0].dtype, device=new_labels[0].device)
+#         attention_mask = torch.zeros((batch_size, max_len), dtype=attention_mask.dtype, device=attention_mask.device)
+#         position_ids = torch.zeros((batch_size, max_len), dtype=position_ids.dtype, device=position_ids.device)
+
+#         # 遍历新的输入嵌入和标签
+#         for i, (cur_new_embed, cur_new_labels) in enumerate(zip(new_input_embeds, new_labels)):
+#             # 获取当前嵌入的长度
+#             cur_len = cur_new_embed.shape[0]
+#             # 如果填充侧为左，则将当前嵌入和标签填充到最大长度
+#             if getattr(self.config, 'tokenizer_padding_side', 'right') == "left":
+#                 new_input_embeds_padded.append(torch.cat((
+#                     torch.zeros((max_len - cur_len, cur_new_embed.shape[1]), dtype=cur_new_embed.dtype, device=cur_new_embed.device),
+#                     cur_new_embed
+#                 ), dim=0))
+#                 if cur_len > 0:
+#                     new_labels_padded[i, -cur_len:] = cur_new_labels
+#                     attention_mask[i, -cur_len:] = True
+#                     position_ids[i, -cur_len:] = torch.arange(0, cur_len, dtype=position_ids.dtype, device=position_ids.device)
+#             else:
+#                 # 否则，将当前嵌入和标签填充到最大长度
+#                 new_input_embeds_padded.append(torch.cat((
+#                     cur_new_embed,
+#                     torch.zeros((max_len - cur_len, cur_new_embed.shape[1]), dtype=cur_new_embed.dtype, device=cur_new_embed.device)
+#                 ), dim=0))
+#                 if cur_len > 0:
+#                     new_labels_padded[i, :cur_len] = cur_new_labels
+#                     attention_mask[i, :cur_len] = True
+#                     position_ids[i, :cur_len] = torch.arange(0, cur_len, dtype=position_ids.dtype, device=position_ids.device)
+
+#         # 将新的输入嵌入堆叠
+#         new_input_embeds = torch.stack(new_input_embeds_padded, dim=0)
+
+#         # 如果原始标签为空，则将新的标签设置为空
+#         if _labels is None:
+#             new_labels = None
+#         else:
+#             new_labels = new_labels_padded
+
+#         # 如果原始注意力掩码为空，则将新的注意力掩码设置为空
+#         if _attention_mask is None:
+#             attention_mask = None
+#         else:
+#             attention_mask = attention_mask.to(dtype=_attention_mask.dtype)
+
+#         # 如果原始位置id为空，则将新的位置id设置为空
+#         if _position_ids is None:
+#             position_ids = None
+
+#         # 返回新的输入嵌入，位置id，注意力掩码，过去键值，和新的标签
+#         return None, position_ids, attention_mask, past_key_values, new_input_embeds, new_labels
+
+#     def initialize_vision_tokenizer(self, model_args, tokenizer):
+#         if model_args.mm_use_im_patch_token:
+#             tokenizer.add_tokens([DEFAULT_IMAGE_PATCH_TOKEN], special_tokens=True)
+#             self.resize_token_embeddings(len(tokenizer))
+
+#         if model_args.mm_use_im_start_end:
+#             num_new_tokens = tokenizer.add_tokens([DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN], special_tokens=True)
+#             self.resize_token_embeddings(len(tokenizer))
+
+#             if num_new_tokens > 0:
+#                 input_embeddings = self.get_input_embeddings().weight.data
+#                 output_embeddings = self.get_output_embeddings().weight.data
+
+#                 input_embeddings_avg = input_embeddings[:-num_new_tokens].mean(
+#                     dim=0, keepdim=True)
+#                 output_embeddings_avg = output_embeddings[:-num_new_tokens].mean(
+#                     dim=0, keepdim=True)
+
+#                 input_embeddings[-num_new_tokens:] = input_embeddings_avg
+#                 output_embeddings[-num_new_tokens:] = output_embeddings_avg
+
+#             if model_args.tune_mm_mlp_adapter:
+#                 for p in self.get_input_embeddings().parameters():
+#                     p.requires_grad = True
+#                 for p in self.get_output_embeddings().parameters():
+#                     p.requires_grad = False
+
+#             if model_args.pretrain_mm_mlp_adapter:
+#                 mm_projector_weights = torch.load(model_args.pretrain_mm_mlp_adapter, map_location='cpu')
+#                 embed_tokens_weight = mm_projector_weights['model.embed_tokens.weight']
+#                 assert num_new_tokens == 2
+#                 if input_embeddings.shape == embed_tokens_weight.shape:
+#                     input_embeddings[-num_new_tokens:] = embed_tokens_weight[-num_new_tokens:]
+#                 elif embed_tokens_weight.shape[0] == num_new_tokens:
+#                     input_embeddings[-num_new_tokens:] = embed_tokens_weight
+#                 else:
+#                     raise ValueError(f"Unexpected embed_tokens_weight shape. Pretrained: {embed_tokens_weight.shape}. Current: {input_embeddings.shape}. Numer of new tokens: {num_new_tokens}.")
+#         elif model_args.mm_use_im_patch_token:
+#             if model_args.tune_mm_mlp_adapter:
+#                 for p in self.get_input_embeddings().parameters():
+#                     p.requires_grad = False
+#                 for p in self.get_output_embeddings().parameters():
+#                     p.requires_grad = False

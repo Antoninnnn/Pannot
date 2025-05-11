@@ -11,3 +11,23 @@ DEFAULT_IMAGE_PATCH_TOKEN = "<im_patch>"
 DEFAULT_IM_START_TOKEN = "<im_start>"
 DEFAULT_IM_END_TOKEN = "<im_end>"
 IMAGE_PLACEHOLDER = "<image-placeholder>"
+
+PROT_TOKEN_INDEX = -300
+DEFAULT_PROT_TOKEN = "<prot>"
+DEFAULT_PROT_PATCH_TOKEN = "<prot_patch>"
+DEFAULT_PROT_START_TOKEN = "<prot_start>"
+DEFAULT_PROT_END_TOKEN = "<prot_end>"
+PROT_PLACEHOLDER = "<prot-placeholder>"
+
+SEQ_TOKEN_INDEX = -330
+DEFAULT_SEQ_TOKEN = "<seq>"
+DEFAULT_SEQ_PATCH_TOKEN = "<seq_patch>"
+DEFAULT_SEQ_START_TOKEN = "<seq_start>"
+DEFAULT_SEQ_END_TOKEN = "<seq_end>"
+
+STR_TOKEN_INDEX = -360
+DEFAULT_STR_TOKEN = "<str>"
+DEFAULT_STR_PATCH_TOKEN = "<str_patch>"
+DEFAULT_STR_START_TOKEN = "<str_start>"
+DEFAULT_STR_END_TOKEN = "<str_end>"
+
