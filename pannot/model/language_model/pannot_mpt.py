@@ -45,11 +45,8 @@ class PannotMptForCausalLM(MptForCausalLM, PannotMetaForCausalLM):
 
     def __init__(self, config):
         super(MptForCausalLM, self).__init__(config)
-
         self.transformer = PannotMptModel(config)
-        self.lm_head = torch.nn.Linear(config.hidden_size, config.vocab_size, bias=False)
-
-        # Initialize weights and apply final processing
+        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
         self.post_init()
 
     def get_model(self):
@@ -70,12 +67,24 @@ class PannotMptForCausalLM(MptForCausalLM, PannotMetaForCausalLM):
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
-        images=None):
+        seqs: Optional[List[torch.Tensor]] = None,
+        strs: Optional[List[torch.Tensor]] = None,
+    ):
+        # Build inputs_embeds (and updated masks/labels) if not provided
+        if inputs_embeds is None:
+            input_ids, position_ids, attention_mask, past_key_values, inputs_embeds, labels = \
+                self.prepare_inputs_labels_for_multimodal(
+                    input_ids=input_ids,
+                    position_ids=None,
+                    attention_mask=attention_mask,
+                    past_key_values=past_key_values,
+                    labels=labels,
+                    seqs=seqs,
+                    strs=strs
+                )
 
-        input_ids, attention_mask, past_key_values, inputs_embeds, labels = self.prepare_inputs_labels_for_multimodal(input_ids, attention_mask, past_key_values, labels, images)
-        
         return super().forward(
-            input_ids,
+            input_ids=input_ids,
             past_key_values=past_key_values,
             attention_mask=attention_mask,
             inputs_embeds=inputs_embeds,
@@ -86,13 +95,58 @@ class PannotMptForCausalLM(MptForCausalLM, PannotMetaForCausalLM):
             return_dict=return_dict,
         )
 
-    def prepare_inputs_for_generation(self, input_ids, past_key_values=None, inputs_embeds=None, **kwargs):
-        images = kwargs.pop("images", None)
-        _inputs = super().prepare_inputs_for_generation(
-            input_ids, past_key_values=past_key_values, inputs_embeds=inputs_embeds, **kwargs
+    @torch.no_grad()
+    def generate(
+        self,
+        input_ids: Optional[torch.LongTensor] = None,
+        seqs: Optional[List[torch.Tensor]] = None,
+        strs: Optional[List[torch.Tensor]] = None,
+        **kwargs,
+    ) -> Union[GenerateOutput, torch.LongTensor]:
+        # pop out any existing embeddings or masks
+        position_ids = kwargs.pop("position_ids", None)
+        attention_mask = kwargs.pop("attention_mask", None)
+        if "inputs_embeds" in kwargs:
+            raise NotImplementedError("`inputs_embeds` is not supported for PannotMpt")
+
+        # build inputs_embeds from seqs/strs if provided
+        if seqs is not None or strs is not None:
+            input_ids, position_ids, attention_mask, _, inputs_embeds, _ = \
+                self.prepare_inputs_labels_for_multimodal(
+                    input_ids=input_ids,
+                    position_ids=position_ids,
+                    attention_mask=attention_mask,
+                    past_key_values=None,
+                    labels=None,
+                    seqs=seqs,
+                    strs=strs
+                )
+        else:
+            inputs_embeds = self.get_model().embed_tokens(input_ids)
+
+        return super().generate(
+            inputs_embeds=inputs_embeds,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            **kwargs
         )
-        _inputs['images'] = images
-        return _inputs
+
+    def prepare_inputs_for_generation(self, input_ids, past_key_values=None,
+                                      inputs_embeds=None, **kwargs):
+        # carry seqs/strs through generator state
+        seqs = kwargs.pop("seqs", None)
+        strs = kwargs.pop("strs", None)
+        model_kwargs = super().prepare_inputs_for_generation(
+            input_ids,
+            past_key_values=past_key_values,
+            inputs_embeds=inputs_embeds,
+            **kwargs
+        )
+        if seqs is not None:
+            model_kwargs["seqs"] = seqs
+        if strs is not None:
+            model_kwargs["strs"] = strs
+        return model_kwargs
 
 
 AutoConfig.register("pannot_mpt", PannotMptConfig)
