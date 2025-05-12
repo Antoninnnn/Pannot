@@ -253,7 +253,7 @@ class PannotMetaForCausalLM(ABC):
             labels = torch.full_like(input_ids, IGNORE_INDEX)
 
         # TODO: seq start / end and str start/end is not implemented here to support pretraining.
-        if getattr(self.config, 'tune_mm_mlp_adapter', False) and getattr(self.config, 'mm_use_seq_start_end', False) getattr(self.config, 'mm_use_str_start_end', False):
+        if getattr(self.config, 'tune_mm_mlp_adapter', False) and getattr(self.config, 'mm_use_seq_start_end', False) and getattr(self.config, 'mm_use_str_start_end', False):
             raise NotImplementedError
 
         # Remove padding
