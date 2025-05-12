@@ -252,6 +252,10 @@ class PannotMetaForCausalLM(ABC):
         if labels is None:
             labels = torch.full_like(input_ids, IGNORE_INDEX)
 
+        # TODO: seq start / end and str start/end is not implemented here to support pretraining.
+        if getattr(self.config, 'tune_mm_mlp_adapter', False) and getattr(self.config, 'mm_use_seq_start_end', False) getattr(self.config, 'mm_use_str_start_end', False):
+            raise NotImplementedError
+
         # Remove padding
         _input_ids = input_ids
         input_ids = [cur_input_ids[cur_attention_mask] for cur_input_ids, cur_attention_mask in zip(input_ids, attention_mask)]
@@ -291,6 +295,24 @@ class PannotMetaForCausalLM(ABC):
                     seq_feature = self.encode_seqs(seqs[cur_seq_idx])
                     cur_embed_segments.append(seq_feature)
                     cur_label_segments.append(torch.full((seq_feature.shape[0],), IGNORE_INDEX, dtype=cur_labels.dtype, device=cur_labels.device))
+                    
+                    #     # Embed the start and end tokens (1, D)
+                    # start_embed = self.get_model().embed_tokens(
+                    #     torch.tensor([SEQ_START_TOKEN_ID], device=seq_feature.device)
+                    # )
+                    # end_embed = self.get_model().embed_tokens(
+                    #     torch.tensor([SEQ_END_TOKEN_ID], device=seq_feature.device)
+                    # )
+
+                    # # Concatenate to make (L + 2, D)
+                    # seq_feature = torch.cat([start_embed, seq_feature, end_embed], dim=0)
+
+                    # # Create dummy labels for these tokens (set to IGNORE_INDEX)
+                    # seq_labels = torch.full((seq_feature.shape[0],), IGNORE_INDEX, dtype=cur_labels.dtype, device=cur_labels.device)
+
+                    # cur_embed_segments.append(seq_feature)
+                    # cur_label_segments.append(seq_labels)
+                                    
                     cur_seq_idx += 1
                 elif all_specials[i + 1][1] == 'str':
                     str_feature = self.encode_strs(strs[cur_str_idx])
