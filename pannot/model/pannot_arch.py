@@ -17,9 +17,9 @@ from abc import ABC, abstractmethod
 
 import torch
 import torch.nn as nn
-
-from .multimodal_encoder.builder import build_vision_tower
-from .multimodal_projector.builder import build_vision_projector
+# build_vision_tower
+from .multimodal_encoder.builder import build_seq_tower, build_struc_tower
+from .multimodal_projector.builder import build_seq_projector, build_struc_projector
 
 # from pannot.constants import IGNORE_INDEX, IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 from pannot.constants import IGNORE_INDEX, SEQ_TOKEN_INDEX, DEFAULT_SEQ_TOKEN, DEFAULT_SEQ_PATCH_TOKEN ,DEFAULT_SEQ_START_TOKEN ,DEFAULT_SEQ_END_TOKEN ,STR_TOKEN_INDEX ,DEFAULT_STR_TOKEN ,DEFAULT_STR_PATCH_TOKEN ,DEFAULT_STR_START_TOKEN ,DEFAULT_STR_END_TOKEN 
@@ -36,15 +36,15 @@ class PannotMetaModel:
             self.seq_tower = build_seq_tower(config, delay_load=True)
             self.mm_seq_projector = build_seq_projector(config)
 
-        if hasattr(config, "mm_str_tower"):
-            self.str_tower = build_str_tower(config, delay_load=True)
-            self.mm_str_projector = build_str_projector(config)
+        if hasattr(config, "mm_struc_tower"):
+            self.struc_tower = build_struc_tower(config, delay_load=True)
+            self.mm_struc_projector = build_struc_projector(config)
 
     def get_seq_tower(self):
         return getattr(self, 'seq_tower', None)
 
-    def get_str_tower(self):
-        return getattr(self, 'str_tower', None)
+    def get_struc_tower(self):
+        return getattr(self, 'struc_tower', None)
 
     def initialize_seq_modules(self, model_args, fsdp=None):
         self.config.mm_seq_tower = model_args.seq_tower
@@ -75,31 +75,31 @@ class PannotMetaModel:
             )
 
     def initialize_str_modules(self, model_args, fsdp=None):
-        self.config.mm_str_tower = model_args.str_tower
+        self.config.mm_struc_tower = model_args.struc_tower
         self.config.mm_str_select_layer = model_args.mm_str_select_layer
         self.config.mm_str_select_feature = model_args.mm_str_select_feature
         self.config.use_mm_str_proj = True
 
-        if self.get_str_tower() is None:
-            str_tower = build_str_tower(model_args)
-            self.str_tower = [str_tower] if fsdp else str_tower
+        if self.get_struc_tower() is None:
+            struc_tower = build_struc_tower(model_args)
+            self.struc_tower = [struc_tower] if fsdp else struc_tower
         else:
-            str_tower = self.str_tower[0] if fsdp else self.str_tower
-            str_tower.load_model()
+            struc_tower = self.struc_tower[0] if fsdp else self.struc_tower
+            struc_tower.load_model()
 
-        self.config.mm_str_hidden_size = str_tower.hidden_size
-        self.config.mm_str_projector_type = getattr(model_args, 'mm_str_projector_type', 'linear')
+        self.config.mm_str_hidden_size = struc_tower.hidden_size
+        self.config.mm_struc_projector_type = getattr(model_args, 'mm_struc_projector_type', 'linear')
 
-        if getattr(self, 'mm_str_projector', None) is None:
-            self.mm_str_projector = build_str_projector(self.config)
+        if getattr(self, 'mm_struc_projector', None) is None:
+            self.mm_struc_projector = build_struc_projector(self.config)
         else:
-            for p in self.mm_str_projector.parameters():
+            for p in self.mm_struc_projector.parameters():
                 p.requires_grad = True
 
         if model_args.pretrain_mm_str_mlp_adapter is not None:
-            str_projector_weights = torch.load(model_args.pretrain_mm_str_mlp_adapter, map_location='cpu')
-            self.mm_str_projector.load_state_dict(
-                {k.split('mm_str_projector.')[1]: v for k, v in str_projector_weights.items() if 'mm_str_projector' in k}
+            struc_projector_weights = torch.load(model_args.pretrain_mm_str_mlp_adapter, map_location='cpu')
+            self.mm_struc_projector.load_state_dict(
+                {k.split('mm_struc_projector.')[1]: v for k, v in struc_projector_weights.items() if 'mm_struc_projector' in k}
             )
 
 # class PannotMetaModel:
@@ -213,8 +213,8 @@ class PannotMetaForCausalLM(ABC):
     def get_seq_tower(self):
         return self.get_model().get_seq_tower()
 
-    def get_str_tower(self):
-        return self.get_model().get_str_tower()
+    def get_struc_tower(self):
+        return self.get_model().get_struc_tower()
 
     def encode_seqs(self, seqs):
         seq_features = self.get_seq_tower()(seqs)
@@ -222,8 +222,8 @@ class PannotMetaForCausalLM(ABC):
         return seq_features
 
     def encode_strs(self, strs):
-        str_features = self.get_str_tower()(strs)
-        str_features = self.get_model().str_projector(str_features)
+        str_features = self.get_struc_tower()(strs)
+        str_features = self.get_model().struc_projector(str_features)
         return str_features
 
     def prepare_inputs_labels_for_multimodal(
@@ -231,10 +231,10 @@ class PannotMetaForCausalLM(ABC):
         seqs=None, strs=None
     ):
         seq_tower = self.get_seq_tower()
-        str_tower = self.get_str_tower()
+        struc_tower = self.get_struc_tower()
 
 
-        if seq_tower is None and str_tower is None or input_ids.shape[1] == 1:
+        if seq_tower is None and struc_tower is None or input_ids.shape[1] == 1:
             return input_ids, position_ids, attention_mask, past_key_values, None, labels
 
         if attention_mask is None:
