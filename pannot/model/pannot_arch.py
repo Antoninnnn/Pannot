@@ -233,6 +233,10 @@ class PannotMetaForCausalLM(ABC):
         seq_tower = self.get_seq_tower()
         struc_tower = self.get_struc_tower()
 
+        _labels = labels
+        _position_ids = position_ids
+        _attention_mask = attention_mask
+
 
         if seq_tower is None and struc_tower is None or input_ids.shape[1] == 1:
             return input_ids, position_ids, attention_mask, past_key_values, None, labels
@@ -332,6 +336,22 @@ class PannotMetaForCausalLM(ABC):
                 position_ids[i, :cur_len] = torch.arange(cur_len, device=emb.device)
 
         new_input_embeds = torch.stack(new_input_embeds_padded, dim=0)
+
+        # 如果原始标签为空，则将新的标签设置为空
+        if _labels is None:
+            new_labels = None
+        else:
+            new_labels = new_labels_padded
+
+        # 如果原始注意力掩码为空，则将新的注意力掩码设置为空
+        if _attention_mask is None:
+            attention_mask = None
+        else:
+            attention_mask = attention_mask.to(dtype=_attention_mask.dtype)
+
+        # 如果原始位置id为空，则将新的位置id设置为空
+        if _position_ids is None:
+            position_ids = None
 
         return None, position_ids, attention_mask, past_key_values, new_input_embeds, new_labels_padded
     
