@@ -24,7 +24,7 @@ from .multimodal_projector.builder import build_seq_projector, build_struc_proje
 # from pannot.constants import IGNORE_INDEX, IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 from pannot.constants import IGNORE_INDEX, SEQ_TOKEN_INDEX, DEFAULT_SEQ_TOKEN, DEFAULT_SEQ_PATCH_TOKEN ,DEFAULT_SEQ_START_TOKEN ,DEFAULT_SEQ_END_TOKEN ,STR_TOKEN_INDEX ,DEFAULT_STR_TOKEN ,DEFAULT_STR_PATCH_TOKEN ,DEFAULT_STR_START_TOKEN ,DEFAULT_STR_END_TOKEN 
 
-from pannot.mm_utils import get_anyres_image_grid_shape
+# from pannot.mm_utils import get_anyres_image_grid_shape
 
 
 class PannotMetaModel:
