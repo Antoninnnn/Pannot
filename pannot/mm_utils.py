@@ -182,26 +182,30 @@ def process_images(images, image_processor, model_cfg):
     return new_images
 
 
-def tokenizer_image_token(prompt, tokenizer, image_token_index=IMAGE_TOKEN_INDEX, return_tensors=None):
-    prompt_chunks = [tokenizer(chunk).input_ids for chunk in prompt.split('<image>')]
+import re
 
-    def insert_separator(X, sep):
-        return [ele for sublist in zip(X, [sep]*len(X)) for ele in sublist][:-1]
+def tokenizer_protein_token(prompt, tokenizer, seq_token_index=SEQ_TOKEN_INDEX, str_token_index=STR_TOKEN_INDEX, return_tensors=None):
+    # Split the prompt on both <seq> and <str> while preserving the split tokens
+    prompt_chunks = re.split(r'(<seq>|<str>)', prompt)
 
-    input_ids = []
-    offset = 0
-    if len(prompt_chunks) > 0 and len(prompt_chunks[0]) > 0 and prompt_chunks[0][0] == tokenizer.bos_token_id:
-        offset = 1
-        input_ids.append(prompt_chunks[0][0])
+    # Tokenize the chunks and replace <seq> and <str> with their respective token indices
+    tokenized_input = []
+    for chunk in prompt_chunks:
+        if chunk == '<seq>':
+            tokenized_input.append(seq_token_index)
+        elif chunk == '<str>':
+            tokenized_input.append(str_token_index)
+        else:
+            # Tokenize the chunk normally
+            tokenized_input.extend(tokenizer.encode(chunk, add_special_tokens=False))
 
-    for x in insert_separator(prompt_chunks, [image_token_index] * (offset + 1)):
-        input_ids.extend(x[offset:])
-
+    # If return_tensors is specified, return the result as a PyTorch tensor
     if return_tensors is not None:
         if return_tensors == 'pt':
-            return torch.tensor(input_ids, dtype=torch.long)
+            return torch.tensor(tokenized_input, dtype=torch.long)
         raise ValueError(f'Unsupported tensor type: {return_tensors}')
-    return input_ids
+
+    return tokenized_input
 
 
 def get_model_name_from_path(model_path):
