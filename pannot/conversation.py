@@ -216,48 +216,79 @@ class ProteinInput:
     structure: Optional[str] = None  # e.g., path to PDB file or structural data
     annotations: Optional[str] = None  # Functional annotations or descriptions
 
+
 @dataclasses.dataclass
 class Conversation:
-    """A class that keeps all conversation history for protein analysis."""
     system: str
     roles: List[str]
-    messages: List[Tuple[str, Union[str, ProteinInput]]]
-    offset: int
+    messages: List[List[Union[str, ProteinInput]]]
+    offset: int = 0
     sep_style: SeparatorStyle = SeparatorStyle.SINGLE
     sep: str = "###"
     sep2: Optional[str] = None
-    version: str = "ProteinGPT"
+    version: str = "Pannot"
 
     def get_prompt(self) -> str:
-        """Constructs the prompt from the conversation history."""
-        ret = self.system + self.sep
-        for role, message in self.messages:
-            if isinstance(message, ProteinInput):
-                msg_str = f"[Protein Sequence]: {message.sequence}\n"
-                if message.structure:
-                    msg_str += f"[Protein Structure]: {message.structure}\n"
-                if message.annotations:
-                    msg_str += f"[Annotations]: {message.annotations}\n"
-                ret += f"{role}: {msg_str}{self.sep}"
-            else:
-                ret += f"{role}: {message}{self.sep}"
+        messages = self.messages
+        if self.sep_style == SeparatorStyle.SINGLE:
+            ret = self.system + self.sep
+            for role, message in messages:
+                ret += role + ": " + self._format_message(message) + self.sep
+        elif self.sep_style == SeparatorStyle.TWO:
+            seps = [self.sep, self.sep2 or self.sep]
+            ret = self.system + seps[0]
+            for i, (role, message) in enumerate(messages):
+                ret += role + ": " + self._format_message(message) + seps[i % 2]
+        elif self.sep_style == SeparatorStyle.PLAIN:
+            ret = self.system + "\n"
+            for role, message in messages:
+                ret += role + ": " + self._format_message(message) + "\n"
+        elif self.sep_style == SeparatorStyle.LLAMA_2:
+            wrap_sys = lambda msg: f"<<SYS>>\n{msg}\n<</SYS>>\n\n" if msg else ""
+            wrap_inst = lambda msg: f"[INST] {msg} [/INST]"
+            ret = ""
+            for i, (role, message) in enumerate(messages):
+                formatted = self._format_message(message)
+                if i == 0:
+                    assert role == self.roles[0], "First message must be from user"
+                    formatted = wrap_sys(self.system) + formatted
+                if i % 2 == 0:
+                    ret += self.sep + wrap_inst(formatted)
+                else:
+                    ret += " " + formatted + " " + (self.sep2 or self.sep)
+            ret = ret.lstrip(self.sep)
+        elif self.sep_style == SeparatorStyle.MPT:
+            ret = self.system + self.sep
+            for role, message in messages:
+                ret += role + self._format_message(message) + self.sep
+        else:
+            raise ValueError(f"Invalid separator style: {self.sep_style}")
         return ret
 
+    def _format_message(self, message: Union[str, ProteinInput]) -> str:
+        if isinstance(message, ProteinInput):
+            lines = [f"<seq> {message.sequence} </seq>"]
+            if message.structure:
+                lines.append(f"<str> {message.structure} </str>")
+            if message.annotations:
+                lines.append(f"<anno> {message.annotations} </anno>")
+            return "\n".join(lines)
+        return message
+
     def append_message(self, role: str, message: Union[str, ProteinInput]):
-        """Appends a message to the conversation."""
-        self.messages.append((role, message))
+        self.messages.append([role, message])
 
     def copy(self) -> 'Conversation':
-        """Creates a copy of the conversation."""
         return Conversation(
             system=self.system,
-            roles=self.roles.copy(),
-            messages=self.messages.copy(),
+            # roles=self.roles,
+            roles=[role for role in self.roles],
+            messages=[[r, m] for r, m in self.messages],
             offset=self.offset,
             sep_style=self.sep_style,
             sep=self.sep,
             sep2=self.sep2,
-            version=self.version
+            version=self.version,
         )
     
 
