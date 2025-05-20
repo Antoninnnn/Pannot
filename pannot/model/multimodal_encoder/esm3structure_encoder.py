@@ -81,19 +81,7 @@ class ESM3StructureTower(nn.Module):
         """
         coords = coords.to(self.device)
         residue_index = residue_index.to(self.device)
-        reprs, _ = self.structure_encoder.encode(coords, residutower = ESM3StructureTower(weight_path="data/weights/esm3_structure_encoder_v0.pth", device="cuda")
-
-# # Extract coords and residue_index from a PDB file
-# coords, residue_index = tower.structure_processor("4hhb.pdb", chain_id="A")
-
-# # Make sure they are batch-shaped: (1, L, ...)
-# coords = coords.unsqueeze(0)
-# residue_index = residue_index.unsqueeze(0)
-
-# # Forward pass
-# embedding = tower(coords, residue_index)  # shape: (1, 1, D) or (1, L, D)
-
-_index=residue_index)  # (1, L, D)
+        reprs, _ = self.structure_encoder.encode(coords, residue_index=residue_index)  # (1, L, D)
         return self.feature_select(reprs)
 
     @property
