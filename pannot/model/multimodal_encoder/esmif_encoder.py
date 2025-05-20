@@ -9,6 +9,122 @@ from biotite.structure.io.pdbx import CIFFile, get_structure as get_structure_ci
 from biotite.structure.io.pdb import PDBFile, get_structure as get_structure_pdb
 import biotite.structure as struc  # for filter_peptide_backbone
 
+
+
+### Usage
+#tower = ESMIFTower("esm_if1_gvp4_t16_142M_UR50", args=config)
+
+# # Preprocess manually
+# coords = tower.structure_processor("4hhb.pdb", chain="A")  # → (L, 3, 3)
+
+# # Forward tensor
+# features = tower(coords.to("cuda"))  # (1, D) or (1, L, D)
+
+class ESMIFTower(nn.Module):
+    def __init__(self, structure_tower, args, delay_load=False):
+        super().__init__()
+
+        self.is_loaded = False
+        self.structure_tower_name = structure_tower
+        self.select_layer = getattr(args, 'mm_str_select_layer', -1)
+        self.select_feature = getattr(args, 'mm_str_select_feature', 'mean')  # 'mean' or 'residue'
+
+        if not delay_load:
+            self.load_model()
+        elif getattr(args, 'unfreeze_mm_str_tower', False):
+            self.load_model()
+        else:
+            self.cfg_only = {"model_name": self.structure_tower_name}
+
+    def load_model(self):
+        if self.is_loaded:
+            print(f"{self.structure_tower_name} is already loaded. Skipping.")
+            return
+
+        model, alphabet = getattr(esm.pretrained, self.structure_tower_name)()
+        self.structure_tower = model.eval().requires_grad_(False)
+        self.structure_processor = self._build_structure_processor()
+        self.alphabet = alphabet
+        self.is_loaded = True
+
+    def _build_structure_processor(self):
+        def processor(file_path: str, chain: Optional[str] = None, model: int = 1):
+            ext = file_path.split('.')[-1].lower()
+            if ext in ("cif", "mmcif"):
+                cif = CIFFile.read(file_path)
+                structure = get_structure_cif(cif, model=model)
+            elif ext == "pdb":
+                pdb = PDBFile.read(file_path)
+                structure = get_structure_pdb(pdb, model=model)
+            else:
+                raise ValueError(f"Unsupported file extension '.{ext}'")
+
+            if chain is not None:
+                structure = structure[structure.chain_id == chain]
+
+            backbone_mask = struc.filter_peptide_backbone(structure)
+            structure = structure[backbone_mask]
+
+            coords, _ = extract_coords_from_structure(structure)
+            return torch.tensor(coords, dtype=torch.float32)  # (L, 3, 3)
+        return processor
+
+    def feature_select(self, encoder_out: torch.Tensor) -> torch.Tensor:
+        if self.select_feature == "mean":
+            return encoder_out.mean(dim=0, keepdim=True)  # (1, D)
+        elif self.select_feature == "residue":
+            return encoder_out.unsqueeze(0)  # (1, L, D)
+        else:
+            raise ValueError(f"Unexpected select_feature: {self.select_feature}")
+
+    @torch.no_grad()
+    def forward(self, coords):
+        """
+        Args:
+            coords: torch.Tensor of shape (L, 3, 3) or List[Tensor] for batch
+        Returns:
+            torch.Tensor: (1, D) or (1, L, D) depending on `select_feature`
+        """
+        if not self.is_loaded:
+            self.load_model()
+
+        if isinstance(coords, list):
+            outputs = []
+            for coord in coords:
+                coord = coord.to(device=self.device, dtype=self.dtype)
+                enc_out = get_encoder_output(self.structure_tower, self.alphabet, coord)
+                outputs.append(self.feature_select(enc_out).to(coord.dtype))
+            return torch.cat(outputs, dim=0)
+        else:
+            coords = coords.to(device=self.device, dtype=self.dtype)
+            enc_out = get_encoder_output(self.structure_tower, self.alphabet, coords)
+            return self.feature_select(enc_out).to(coords.dtype)
+
+    @property
+    def dummy_feature(self):
+        if self.select_feature == "residue":
+            return torch.zeros(1, 1, self.hidden_size, device=self.device, dtype=self.dtype)
+        return torch.zeros(1, self.hidden_size, device=self.device, dtype=self.dtype)
+
+    @property
+    def dtype(self):
+        return next(self.structure_tower.parameters()).dtype
+
+    @property
+    def device(self):
+        return next(self.structure_tower.parameters()).device
+
+    @property
+    def config(self):
+        if self.is_loaded:
+            return {"hidden_size": self.hidden_size}
+        return self.cfg_only
+
+    @property
+    def hidden_size(self):
+        return self.structure_tower.embed_dim
+
+
 def load_structure(
     file_path: str,
     chain: Optional[str] = None,

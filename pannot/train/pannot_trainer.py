@@ -237,8 +237,11 @@ def _save_checkpoint(self, model, trial, metrics=None):
 
         # Only save Adapter: sequence and structure projectors
         keys_to_match = ['mm_seq_projector', 'mm_str_projector', 'seq_resampler', 'str_resampler']
-        if getattr(self.args, "use_seq_str_start_end", False):  # analogous to use_im_start_end
-            keys_to_match.extend(['embed_tokens', 'embed_in'])
+        if getattr(self.args, "use_seq_start_end", False):  # analogous to use_im_start_end
+            keys_to_match.extend(['seq_embed_tokens', 'seq_embed_in'])
+
+        if getattr(self.args, "use_str_start_end", False):  # analogous to use_im_start_end
+            keys_to_match.extend(['str_embed_tokens', 'str_embed_in'])
 
 
         weight_to_save = get_mm_adapter_state_maybe_zero_3(self.model.named_parameters(), keys_to_match)
