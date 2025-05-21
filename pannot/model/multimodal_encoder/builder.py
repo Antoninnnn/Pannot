@@ -4,6 +4,7 @@ from .clip_encoder import ProtSTTower
 
 from .esm_seq_encoder import ESMSeqTower
 from .esmif_encoder import ESMIFTower
+from .esm3structure_encoder import ESM3StructureTower
 
 def build_seq_tower(seq_tower_cfg, **kwargs):
     seq_tower = getattr(seq_tower_cfg, 'mm_seq_tower', getattr(seq_tower_cfg, 'seq_tower', None))
@@ -19,8 +20,8 @@ def build_struc_tower(struc_tower_cfg, **kwargs):
     struc_tower = getattr(struc_tower_cfg, 'mm_struc_tower', getattr(struc_tower_cfg, 'struc_tower', None))
     if struc_tower == 'ESMIF':
         return ESMIFTower(model_name='esm_if1_gvp4_t16_142M_UR50', args=struc_tower_cfg, **kwargs)
-    # elif struc_tower == 'ESM':
-    #     return ESMStructEncoder(model_name='facebook/esm2_t33_650M_UR50D', args=struc_tower_cfg, **kwargs)
+    elif struc_tower == 'ESM3':
+        return ESM3StructureTower(model_name='"esm3_structure_encoder_v0.pth', args=struc_tower_cfg, **kwargs)
     
     raise ValueError(f'Unknown structure encoder: {struc_tower}')
 # def build_vision_tower(vision_tower_cfg, **kwargs):

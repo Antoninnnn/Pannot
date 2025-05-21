@@ -6,7 +6,7 @@ import math
 import ast
 
 from transformers import StoppingCriteria
-from llava.constants import IMAGE_TOKEN_INDEX
+from pannot.constants import  SEQ_TOKEN_INDEX, STR_TOKEN_INDEX
 
 
 def select_best_resolution(original_size, possible_resolutions):
@@ -37,6 +37,8 @@ def select_best_resolution(original_size, possible_resolutions):
             best_fit = (width, height)
 
     return best_fit
+
+
 
 
 def resize_and_pad_image(image, target_resolution):

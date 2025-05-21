@@ -21,11 +21,11 @@ import biotite.structure as struc  # for filter_peptide_backbone
 # features = tower(coords.to("cuda"))  # (1, D) or (1, L, D)
 
 class ESMIFTower(nn.Module):
-    def __init__(self, structure_tower, args, delay_load=False):
+    def __init__(self, model_name: str = "esm_if1_gvp4_t16_142M_UR50", args=None, delay_load=False):
         super().__init__()
 
         self.is_loaded = False
-        self.structure_tower_name = structure_tower
+        self.structure_tower_name = model_name
         self.select_layer = getattr(args, 'mm_str_select_layer', -1)
         self.select_feature = getattr(args, 'mm_str_select_feature', 'mean')  # 'mean' or 'residue'
 
