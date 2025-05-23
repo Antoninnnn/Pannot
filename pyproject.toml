@@ -47,7 +47,7 @@ dependencies = [
   "timm==0.6.13",
 
   # Bioinformatics dependencies
-  "biotite==0.41.2",  # required for ESM3 compatibility
+  "biotite>=1.0.0",  # required for ESM3 compatibility
   "esm==3.2.0"        # EvolutionaryScale's ESM-3 model
 ]
 
