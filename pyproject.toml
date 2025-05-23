@@ -1,0 +1,74 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pannot"
+version = "0.1.0"
+description = "Multimodal protein language interface for annotation, QA, and reasoning"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [
+  { name = "Yining Yang", email = "yining_yang@tamu.edu" }
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+]
+
+dependencies = [
+  # Core LLaVA-style model requirements
+  "torch==2.1.2",
+  "torchvision==0.16.2",
+  "transformers==4.37.2",
+  "tokenizers==0.15.1",
+  "sentencepiece==0.1.99",
+  "shortuuid",
+  "accelerate==0.21.0",
+  "peft",
+  "bitsandbytes",
+  "pydantic",
+  "markdown2[all]",
+  "numpy",
+  "scikit-learn==1.2.2",
+  "gradio==4.16.0",
+  "gradio_client==0.8.1",
+  "requests",
+  "httpx==0.24.0",
+  "uvicorn",
+  "fastapi",
+  "einops==0.6.1",
+  "einops-exts==0.0.4",
+  "timm==0.6.13",
+
+  # Bioinformatics dependencies
+  "biotite==0.41.2",  # required for ESM3 compatibility
+  "esm==3.2.0"        # EvolutionaryScale's ESM-3 model
+]
+
+[project.optional-dependencies]
+train = [
+  "deepspeed==0.12.6",
+  "ninja",
+  "wandb"
+]
+build = [
+  "build",
+  "twine"
+]
+
+[project.urls]
+Homepage = "https://github.com/Antoninnnn/Pannot"
+Repository = "https://github.com/Antoninnnn/Pannot"
+Bug Tracker = "https://github.com/Antoninnnn/Pannot/issues"
+
+[tool.setuptools.packages.find]
+exclude = [
+  "assets*", "benchmark*", "docs*", "dist*", "playground*", 
+  "scripts*", "tests*", "notebooks*", "examples*"
+]
