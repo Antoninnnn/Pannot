@@ -49,7 +49,7 @@ dependencies = [
 
   # Bioinformatics dependencies
   "biotite==0.41.2",  # Compatible with older ESM versions
-  "esm==3。0.0"        # Downgraded to match torch 2.1.2
+  "esm>=3.0.0"        # Downgraded to match torch 2.1.2
 ]
 
 [project.optional-dependencies]
