@@ -68,7 +68,4 @@ Repository = "https://github.com/Antoninnnn/Pannot"
 Bug Tracker = "https://github.com/Antoninnnn/Pannot/issues"
 
 [tool.setuptools.packages.find]
-exclude = [
-  "assets*", "benchmark*", "docs*", "dist*", "playground*", 
-  "scripts*", "tests*", "notebooks*", "examples*"
-]
+exclude = ["assets*", "benchmark*", "docs*", "dist*", "playground*", "scripts*", "tests*", "notebooks*", "examples*"]
