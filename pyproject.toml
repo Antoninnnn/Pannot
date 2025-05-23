@@ -63,9 +63,9 @@ build = [
 ]
 
 [project.urls]
-”Homepage“ = "https://github.com/Antoninnnn/Pannot"
-“Repository” = "https://github.com/Antoninnnn/Pannot"
-”Bug Tracker“ = "https://github.com/Antoninnnn/Pannot/issues"
+"Homepag" = "https://github.com/Antoninnnn/Pannot"
+"Repository" = "https://github.com/Antoninnnn/Pannot"
+"Bug Tracker" = "https://github.com/Antoninnnn/Pannot/issues"
 
 [tool.setuptools.packages.find]
 exclude = ["assets*", "benchmark*", "docs", "dist*", "playground*", "scripts*", "tests*", "notebooks*", "examples*"]
