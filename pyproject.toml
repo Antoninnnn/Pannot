@@ -25,7 +25,7 @@ classifiers = [
 dependencies = [
   # Core LLaVA-style model requirements
   "torch==2.1.2",
-  "cudatoolkit=11.8",
+  "cudatoolkit==11.8",
   "torchvision==0.16.2",
   "transformers==4.37.2",
   "tokenizers==0.15.1",

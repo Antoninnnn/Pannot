@@ -27,7 +27,6 @@ pip install -e .
 ### Install train
 
 ```
-pip install -r requirements.txt
 
 pip install -e .[train]
 
