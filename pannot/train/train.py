@@ -1066,8 +1066,10 @@ class LazySupervisedProteinDataset(Dataset):
 
         # Step 3: Protein sequence processing
         if sequence is not None and self.seq_tower is not None:
+            print("[INFO] Sequence preprocessing: ", sequence)
             seq_tokenized = self.seq_tower.tokenize([sequence],
                                                     return_tensors='pt', padding=True, truncation=True)
+            print("processed seq_tokenized: ", seq_tokenized)
             data_dict["seq_input_ids"] = seq_tokenized["input_ids"][0]
             data_dict["seq_attention_mask"] = seq_tokenized["attention_mask"][0]
 
