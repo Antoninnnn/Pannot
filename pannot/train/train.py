@@ -1057,7 +1057,7 @@ class LazySupervisedProteinDataset(Dataset):
         data_dict = preprocess(
             sources,
             self.tokenizer,
-            has_protein=('sequence' in sample or 'structure_path' in sample)
+            has_protein=(sequence is not None or structure is not None)
         )
         data_dict = {
             "input_ids": data_dict["input_ids"][0],
@@ -1065,17 +1065,17 @@ class LazySupervisedProteinDataset(Dataset):
         }
 
         # Step 3: Protein sequence processing
-        if "sequence" in sample and self.seq_tower is not None:
-            seq_tokenized = self.seq_tower.tokenize([sample["sequence"]],
+        if sequence is not None and self.seq_tower is not None:
+            seq_tokenized = self.seq_tower.tokenize([sequence],
                                                     return_tensors='pt', padding=True, truncation=True)
             data_dict["seq_input_ids"] = seq_tokenized["input_ids"][0]
             data_dict["seq_attention_mask"] = seq_tokenized["attention_mask"][0]
 
         # Step 4: Structure preprocessing (L, 3, 3)
-        if "structure_path" in sample and self.struc_tower is not None:
+        if structure is not None and self.struc_tower is not None:
             try:
                 coords = self.struc_tower.structure_processor(
-                    sample["structure_path"],
+                    structure,
                     chain=sample.get("structure_chain", "A")
                 )
                 data_dict["struc_coords"] = coords  # tensor, will be moved in collator
@@ -1175,6 +1175,7 @@ def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer,
     train_dataset = LazySupervisedProteinDataset(tokenizer=tokenizer,
                                 data_path=data_args.data_path,
                                 data_args=data_args)
+    print("Loaded training examples from: ", data_args.data_path)
     data_collator = DataCollatorForSupervisedProteinDataset(tokenizer=tokenizer)
     return dict(train_dataset=train_dataset,
                 eval_dataset=None,
