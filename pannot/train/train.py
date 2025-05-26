@@ -1409,7 +1409,7 @@ def train(attn_implementation=None):
     print("\n--- Sample Output ---")
     print("input_ids:", sample["input_ids"])
     print("labels:", sample["labels"])
-    print("sequence:", sample["sequence"])
+    print("sequence:", sample["seq_input_ids"])
     # print("structure:", sample["structure"])
 
     # Collate one batch
