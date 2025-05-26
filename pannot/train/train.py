@@ -1174,7 +1174,7 @@ def train(attn_implementation=None):
             )
         ))
 
-    if model_args.seq_tower is not None or model_args.str_tower is not None:
+    if model_args.mm_seq_tower is not None or model_args.mm_str_tower is not None:
         if 'mpt' in model_args.model_name_or_path:
             config = transformers.AutoConfig.from_pretrained(model_args.model_name_or_path, trust_remote_code=True)
             config.attn_config['attn_impl'] = training_args.mpt_attn_impl
