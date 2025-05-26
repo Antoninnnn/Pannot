@@ -1065,6 +1065,12 @@ class LazySupervisedProteinDataset(Dataset):
             "labels": data_dict["labels"][0]
         }
 
+
+        #         # Always store raw sequence
+        # if sequence is not None:
+        #     data_dict["sequences"] = sequence
+
+
         # Step 3: Protein sequence processing
         if sequence is not None and self.seq_tower is not None:
             print("[INFO] Sequence preprocessing: ", sequence)
@@ -1136,6 +1142,11 @@ class DataCollatorForSupervisedProteinDataset(object):
 
             batch["struc_coords"] = torch.stack(coords_list)
 
+        #         # Raw sequence text for downstream use
+        # if "sequences" in instances[0]:
+        #     batch["seqs"] = [inst["sequences"] for inst in instances]
+
+
         return batch
 
 # @dataclass
@@ -1171,13 +1182,21 @@ class DataCollatorForSupervisedProteinDataset(object):
 
 #         return batch
 
+def make_supervised_data_module(
+    tokenizer: transformers.PreTrainedTokenizer,
+    data_args,
+    seq_tower=None,
+    str_tower=None
+) -> Dict:
 
-def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer,
-                                data_args) -> Dict:
-    """Make dataset and collator for supervised fine-tuning."""
-    train_dataset = LazySupervisedProteinDataset(tokenizer=tokenizer,
-                                data_path=data_args.data_path,
-                                data_args=data_args)
+    train_dataset = LazySupervisedProteinDataset(
+        tokenizer=tokenizer,
+        data_path=data_args.data_path,
+        data_args=data_args,
+        seq_tower=seq_tower,
+        str_tower=str_tower
+    )
+                                
     print("Loaded training examples from: ", data_args.data_path)
     data_collator = DataCollatorForSupervisedProteinDataset(tokenizer=tokenizer)
     return dict(train_dataset=train_dataset,
@@ -1402,7 +1421,10 @@ def train(attn_implementation=None):
                     module.to(torch.bfloat16)
 
     data_module = make_supervised_data_module(tokenizer=tokenizer,
-                                              data_args=data_args)
+                                              data_args=data_args,
+                                              seq_tower=model.get_model().seq_tower,
+                                              str_tower=model.get_model().str_tower,
+    )
 
     dataset = data_module["train_dataset"]
     collator = data_module['data_collator']
