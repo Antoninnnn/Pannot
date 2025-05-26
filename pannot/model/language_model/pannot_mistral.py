@@ -30,8 +30,14 @@ from ..pannot_arch import PannotMetaModel, PannotMetaForCausalLM
 class PannotMistralConfig(MistralConfig):
     model_type = "pannot_mistral"
 
-
 class PannotMistralModel(PannotMetaModel, MistralModel):
+    config_class = PannotMistralConfig
+
+    def __init__(self, config: MistralConfig):
+        super(PannotMistralModel, self).__init__(config)
+
+
+class PannotMistralForCausalLM(PannotMetaModel, PannotMetaForCausalLM):
     config_class = PannotMistralConfig
 
     def __init__(self, config: MistralConfig):
