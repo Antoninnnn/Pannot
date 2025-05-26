@@ -1400,6 +1400,27 @@ def train(attn_implementation=None):
 
     data_module = make_supervised_data_module(tokenizer=tokenizer,
                                               data_args=data_args)
+
+    dataset = data_module["train_dataset"]
+    collator = data_module['data_collator']
+
+    # === Step 4: Test a batch ===
+    sample = dataset[0]
+    print("\n--- Sample Output ---")
+    print("input_ids:", sample["input_ids"])
+    print("labels:", sample["labels"])
+    print("sequence:", sample["sequence"])
+    # print("structure:", sample["structure"])
+
+    # Collate one batch
+    batch = collator([sample])
+    print("\n--- Collated Batch ---")
+    print("input_ids shape:", batch["input_ids"].shape)
+    print("labels shape:", batch["labels"].shape)
+    print("attention_mask shape:", batch["attention_mask"].shape)
+    print("seq_input_ids:", batch.get("seq_input_ids", "[seq_input_ids not returned by collator]"))
+    print("struc_coords:", batch.get("struc_coords", "[struc_coords not returned by collator]"))
+        
     trainer = PannotTrainer(model=model,
                     tokenizer=tokenizer,
                     args=training_args,
