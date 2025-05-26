@@ -61,21 +61,25 @@ class ModelArguments:
     tune_mm_mlp_adapter: bool = field(default=False)
     pretrain_mm_mlp_adapter: Optional[str] = field(default=None)
 
+
     # ===== SEQUENCE TOWER =====
     use_seq_tower: bool = field(default=True)
     mm_seq_tower: Optional[str] = field(default="ESM")  # One of: "ProtST", "ESM"
     mm_seq_select_layer: Optional[int] = field(default=-1)
+    mm_seq_select_feature: Optional[str] = field(default=None)  # 👈 NEW
     mm_seq_projector_type: Optional[str] = field(default="linear")
     mm_use_seq_start_end: bool = field(default=False)
     mm_use_seq_patch_token: bool = field(default=False)
+    mm_seq_no_pooling: bool = field(default=False)  # 👈 NEW
 
     # ===== STRUCTURE TOWER =====
     use_str_tower: bool = field(default=True)
     mm_struc_tower: Optional[str] = field(default="ESMIF")  # One of: "ESMIF", "ESM3"
+    mm_str_select_layer: Optional[int] = field(default=-1)  # 👈 NEW
+    mm_str_select_feature: Optional[str] = field(default=None)  # 👈 NEW
     mm_str_projector_type: Optional[str] = field(default="linear")
     mm_use_str_start_end: bool = field(default=False)
     mm_use_str_patch_token: bool = field(default=False)
-
     # ===== Fusion control (optional) =====
     mm_fusion_type: Optional[str] = field(default="concat")  # e.g., "concat", "sum", "crossattn"
     

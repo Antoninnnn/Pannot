@@ -92,4 +92,4 @@ deepspeed pannot/train/train_mem.py \
     --mm_struc_tower $STR_TOWER \
     --mm_str_projector_type linear \
     --mm_str_select_layer -1 \
-    --mm_str_select_feature "residue"\
+    --mm_str_select_feature "residue"
