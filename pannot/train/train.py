@@ -1276,6 +1276,7 @@ def train(attn_implementation=None):
                 tokenizer=tokenizer,
                 model=model,
             )
+            print("the pad token added")
     elif model_args.version == "v0.5":
         tokenizer.pad_token = tokenizer.unk_token
     else:
@@ -1284,7 +1285,7 @@ def train(attn_implementation=None):
             conversation_lib.default_conversation = conversation_lib.conv_templates[model_args.version]
         else:
             conversation_lib.default_conversation = conversation_lib.conv_templates["vicuna_v1"]
-
+    print("tokenzier pad token id", tokenizer.pad_token_id)
     # if model_args.vision_tower is not None:
     #     model.get_model().initialize_vision_modules(
     #         model_args=model_args,
