@@ -60,6 +60,9 @@ class PannotMetaModel:
             seq_tower = self.seq_tower[0] if fsdp else self.seq_tower
             seq_tower.load_model()
 
+        print("The hidden dim for struc tower is",seq_tower.hidden_size)
+ 
+
         self.config.mm_seq_hidden_size = seq_tower.hidden_size
         self.config.mm_seq_projector_type = getattr(model_args, 'mm_seq_projector_type', 'linear')
 
@@ -88,11 +91,11 @@ class PannotMetaModel:
             struc_tower = self.struc_tower[0] if fsdp else self.struc_tower
             struc_tower.load_model()
 
-        print("The hidden dim for struc tower is",struc_tower.structure_tower.embed_dim)
+        print("The hidden dim for struc tower is",struc_tower.structure_tower.args.decoder_embed_dim)
 
-        if not struc_tower.is_loaded:
-            struc_tower.load_model()
-            print("struc tower loaded with force")
+        # if not struc_tower.is_loaded:
+        #     struc_tower.load_model()
+        #     print("struc tower loaded with force")
 
         self.config.mm_str_hidden_size = struc_tower.hidden_size
         self.config.mm_struc_projector_type = getattr(model_args, 'mm_struc_projector_type', 'linear')

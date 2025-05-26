@@ -94,6 +94,7 @@ class ESMSeqTower(nn.Module):
 
     @property
     def hidden_size(self):
+        # the hidden size of the last layer is stored in the config of the model
         return self.config.hidden_size
 
 

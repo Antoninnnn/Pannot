@@ -122,7 +122,10 @@ class ESMIFTower(nn.Module):
 
     @property
     def hidden_size(self):
-        return self.structure_tower.embed_dim
+        if not self.is_loaded:
+            self.load_model()
+        # return self.model.embed_dim
+        return self.structure_tower.args.decoder_embed_dim
 
 
 def load_structure(
@@ -226,7 +229,7 @@ class ESMIFEncoder(nn.Module):
     def hidden_size(self):
         if not self.is_loaded:
             self.load_model()
-        return self.model.embed_dim
+        return self.model.args.decoder_embed_dim
 
     @property
     def dummy_feature(self):
