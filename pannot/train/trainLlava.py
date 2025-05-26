@@ -898,6 +898,7 @@ def train(attn_implementation=None):
                 tokenizer=tokenizer,
                 model=model,
             )
+            print("the pad token added")
     elif model_args.version == "v0.5":
         tokenizer.pad_token = tokenizer.unk_token
     else:
