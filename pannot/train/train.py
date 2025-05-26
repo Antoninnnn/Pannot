@@ -1194,7 +1194,7 @@ def make_supervised_data_module(
         data_path=data_args.data_path,
         data_args=data_args,
         seq_tower=seq_tower,
-        str_tower=str_tower
+        struc_tower=str_tower
     )
                                 
     print("Loaded training examples from: ", data_args.data_path)
