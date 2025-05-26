@@ -30,6 +30,7 @@ from ..pannot_arch import PannotMetaModel, PannotMetaForCausalLM
 class PannotConfig(LlamaConfig):
     model_type = "pannot_llama"
 
+    ## Llama3 's config has a rope_scaling need to be patched, it can not be dealt with transformers lib(v4.37.0)
     def __init__(self, **kwargs):
         # Patch rope_scaling before initializing
         rope_scaling = kwargs.get("rope_scaling", None)
