@@ -1035,6 +1035,7 @@ class LazySupervisedProteinDataset(Dataset):
         output = sample['output']
         sequence = sample.get('input', None)
         structure = sample.get('structure', None)
+        print("obtained sequence: ",sequence)
 
         # Build multimodal-aware prompt with <seq> and/or <str>
         prompt_parts = [instruction]
