@@ -50,6 +50,7 @@ class PannotMetaModel:
         self.config.mm_seq_tower = model_args.mm_seq_tower
         self.config.mm_seq_select_layer = model_args.mm_seq_select_layer
         self.config.mm_seq_select_feature = model_args.mm_seq_select_feature
+        self.config.mm_seq_no_pooling = model_args.mm_seq_no_pooling
         self.config.use_mm_seq_proj = True
 
         if self.get_seq_tower() is None:

@@ -10,16 +10,16 @@ class ESMSeqTower(nn.Module):
         model_name: str = 'facebook/esm2_t6_8M_UR50D',
         args=None,
         delay_load: bool = False,
-        no_pooling: bool = False,
+        no_pooling: bool = True,
     ):
         super().__init__()
         self.is_loaded = False
         self.model_name = model_name
         self.args = args
 
-        self.select_layer = getattr(args, 'protein_select_layer', -1)
-        self.pooling = getattr(args, 'protein_pooling', 'cls')  # 'cls' or 'mean'
-        self.no_pooling = no_pooling
+        self.select_layer = getattr(args, 'mm_seq_select_layer', -1)
+        self.pooling = getattr(args, 'mm_seq_select_feature', 'cls')  # 'cls' or 'mean'
+        self.no_pooling = getattr(args, 'mm_seq_no_pooling', no_pooling)
 
         if not delay_load or getattr(args, 'unfreeze_mm_seq_tower', False):
             self.load_model()

@@ -86,6 +86,9 @@ deepspeed pannot/train/train_mem.py \
     --mm_seq_tower $SEQ_TOWER \
     --mm_seq_projector_type linear \
     --mm_seq_select_layer -1 \
+    --mm_seq_select_feature "cls"\
     --use_str_tower True \
     --mm_struc_tower $STR_TOWER \
-    --mm_str_projector_type linear
+    --mm_str_projector_type linear \
+    --mm_str_select_layer -1 \
+    --mm_str_select_feature "residue"\
