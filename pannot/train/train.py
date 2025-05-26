@@ -1422,8 +1422,8 @@ def train(attn_implementation=None):
 
     data_module = make_supervised_data_module(tokenizer=tokenizer,
                                               data_args=data_args,
-                                              seq_tower=model.get_model().seq_tower,
-                                              str_tower=model.get_model().str_tower,
+                                              seq_tower=model.get_seq_tower(),
+                                              str_tower=model.get_str_tower()
     )
 
     dataset = data_module["train_dataset"]
