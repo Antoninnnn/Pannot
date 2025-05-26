@@ -13,16 +13,16 @@
 #    limitations under the License.
 
 
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List, Union
 
 import torch
-
+import torch.nn as nn
 from transformers import AutoConfig, AutoModelForCausalLM, \
                          MptConfig, MptForCausalLM, MptModel
 
 
 from ..pannot_arch import PannotMetaModel, PannotMetaForCausalLM
-
+from transformers.generation.utils import GenerateOutput
 
 class PannotMptConfig(MptConfig):
     model_type = "pannot_mpt"

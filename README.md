@@ -26,6 +26,10 @@ source activate pannot-dev
 pip install --upgrade pip  # enable PEP 660 support
 pip install -e .
 
+pip install torch-scatter torch-sparse torch-cluster torch-spline-conv -f https://data.pyg.org/whl/torch-2.1.0+cu118.html
+
+pip install torch-geometric
+
 ```
 
 problem solving : I(Yining) met some problem for the torch with cuda 11.8. The final solution is using `pip uninstall torch torchvision`, and call `pip install torch==2.1.2 torchvision==0.16.2 --index-url https://download.pytorch.org/whl/cu118` separately

@@ -21,7 +21,7 @@ module load CUDA/11.8.0 Anaconda3
 export LD_LIBRARY_PATH=$EBROOTCUDA/lib64:$LD_LIBRARY_PATH
 
 # Set Hugging Face cache directory to a writable location
-export TRANSFORMERS_CACHE=$SCRATCH/hf_cache
+export HF_HOME=$SCRATCH/hf_cache
 
 # # Create the directory if it doesn't exist
 # mkdir -p $TRANSFORMERS_CACHE
