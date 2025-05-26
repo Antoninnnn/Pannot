@@ -71,6 +71,8 @@ class ModelArguments:
     mm_use_seq_start_end: bool = field(default=False)
     mm_use_seq_patch_token: bool = field(default=False)
     mm_seq_no_pooling: bool = field(default=False)  # 👈 NEW
+    pretrain_mm_seq_mlp_adapter: Optional[str] = field(default=None)
+
 
     # ===== STRUCTURE TOWER =====
     use_str_tower: bool = field(default=True)
@@ -80,6 +82,11 @@ class ModelArguments:
     mm_str_projector_type: Optional[str] = field(default="linear")
     mm_use_str_start_end: bool = field(default=False)
     mm_use_str_patch_token: bool = field(default=False)
+        
+    pretrain_mm_str_mlp_adapter: Optional[str] = field(default=None)
+
+
+
     # ===== Fusion control (optional) =====
     mm_fusion_type: Optional[str] = field(default="concat")  # e.g., "concat", "sum", "crossattn"
     
