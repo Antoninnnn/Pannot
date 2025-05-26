@@ -59,6 +59,12 @@ echo "Using model: ${MODEL_VERSION}, prompt: ${PROMPT_VERSION}"
 echo "Output dir: ${OUTPUT_DIR}"
 echo "Using DeepSpeed config: ./scripts/zero2.json"
 
+
+export WANDB_API_KEY=c6da89ba565a8b25f5b18c6fb722e7ad6637d4de  # from wandb.ai/settings
+export WANDB_MODE=offline  # or remove this if online logging is available
+export WANDB_DIR=$SCRATCH/wandb_logs
+
+
 deepspeed pannot/train/train_mem.py \
     --deepspeed ./scripts/zero2.json \
     --model_name_or_path local_pretrained_llm/$MODEL_VERSION \

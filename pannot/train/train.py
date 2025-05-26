@@ -1026,7 +1026,30 @@ class LazySupervisedProteinDataset(Dataset):
 
     def __getitem__(self, idx) -> Dict[str, torch.Tensor]:
         sample = self.list_data_dict[idx]
-        conversations = copy.deepcopy(sample["conversations"])
+
+        ######## lazt conversation construction #########
+        # conversations = copy.deepcopy(sample["conversations"])
+
+        ####### Especially for OPI instruction tuning #######
+        instruction = sample['instruction']
+        output = sample['output']
+        sequence = sample.get('input', None)
+        structure = sample.get('structure', None)
+
+        # Build multimodal-aware prompt with <seq> and/or <str>
+        prompt_parts = [instruction]
+        if sequence is not None:
+            prompt_parts.append(DEFAULT_SEQ_TOKEN)
+        if structure is not None:
+            prompt_parts.append(DEFAULT_STR_TOKEN)
+
+        prompt = '\n'.join(prompt_parts)
+
+        conversations = [
+            {"from": "human", "value": prompt},
+            {"from": "gpt", "value": output}
+        ]
+
         # Step 1: Insert <seq>/<str> tokens
         sources = preprocess_multimodal([conversations], self.data_args)
 
