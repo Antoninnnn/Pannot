@@ -11,8 +11,8 @@ def build_seq_tower(seq_tower_cfg, **kwargs):
     if seq_tower == 'ProtST':
         return ProtSTTower(model_name='DeepGraphLearning/ProtST', args=seq_tower_cfg, **kwargs)
     elif seq_tower == 'ESM':
-        return ESMSeqTower(model_name='facebook/esm2_t33_650M_UR50D', args=seq_tower_cfg, **kwargs)
-
+        # return ESMSeqTower(model_name='facebook/esm2_t33_650M_UR50D', args=seq_tower_cfg, **kwargs)
+        return ESMSeqTower(model_name='local_pretrained_encoders/esm2_t33_650M_UR50D', args=seq_tower_cfg, **kwargs)
     raise ValueError(f'Unknown sequence encoder: {seq_tower}')
 
 
