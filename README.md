@@ -20,8 +20,7 @@ module load GCC/12.3.0 CUDA/11.8.0 Anaconda3
 ```
 conda create -n pannot-dev python=3.10 -y
 source activate pannot-dev
-
-conda install cudatoolkit=11.8
+pip install --upgrade pip  # enable PEP 660 support
 pip install -e .
 
 ```

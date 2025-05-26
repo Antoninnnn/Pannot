@@ -26,6 +26,7 @@ dependencies = [
   # Core LLaVA-style model requirements
   "torch==2.1.2",
   "torchvision==0.16.2",
+  "numpy",
   "transformers==4.37.2",
   "tokenizers==0.15.1",
   "sentencepiece==0.1.99",
