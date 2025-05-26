@@ -30,6 +30,15 @@ from ..pannot_arch import PannotMetaModel, PannotMetaForCausalLM
 class PannotConfig(LlamaConfig):
     model_type = "pannot_llama"
 
+    def __init__(self, **kwargs):
+        # Patch rope_scaling before initializing
+        rope_scaling = kwargs.get("rope_scaling", None)
+        if isinstance(rope_scaling, dict) and "type" not in rope_scaling:
+            kwargs["rope_scaling"] = {
+                "type": "linear",
+                "factor": rope_scaling.get("factor", 1.0)
+            }
+        super().__init__(**kwargs)
 
 class PannotLlamaModel(PannotMetaModel, LlamaModel):
     config_class = PannotConfig

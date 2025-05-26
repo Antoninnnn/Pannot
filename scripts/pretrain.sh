@@ -41,7 +41,7 @@ source activate pannot-dev
 # Example: Pannot pretraining script (multimodal: protein sequence + structure)
 # Be sure to set these environment variables or modify inline:
 
-MODEL_VERSION=llama-2-7b-chat
+MODEL_VERSION=Llama-3.1-8B
 PROMPT_VERSION=plain
 
 # Customize these:
@@ -57,7 +57,7 @@ echo "Using DeepSpeed config: ./scripts/zero2.json"
 
 deepspeed pannot/train/train_mem.py \
     --deepspeed ./scripts/zero2.json \
-    --model_name_or_path ./checkpoints/$MODEL_VERSION \
+    --model_name_or_path local_pretrained_llm/$MODEL_VERSION \
     --version $PROMPT_VERSION \
     --data_path ${DATA_PATH} \
     --tune_mm_mlp_adapter True \

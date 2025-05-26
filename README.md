@@ -39,7 +39,7 @@ problem solving : I(Yining) met some problem for the torch with cuda 11.8. The f
 ```
 
 pip install -e .[train]
-
+pip install "flash-attn<=2.5.6" --no-build-isolation
 
 ```
 
