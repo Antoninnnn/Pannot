@@ -13,7 +13,10 @@ This project aims at protein multimodal inputs and natural language output. It w
 ### For Grace HPRC(TAMU)
 ```
 module purge
-module load GCC/12.3.0 CUDA/11.8.0 Anaconda3
+
+ml CUDA/11.8.0 Anaconda3
+
+<!-- module load GCC/12.3.0 CUDA/11.8.0 Anaconda3 --> ## if you want to use the predefined module of grace, you can use this line(caution: there would probably be version problem!)
 ```
 
 ### Set the conda virtual environment
@@ -24,6 +27,8 @@ pip install --upgrade pip  # enable PEP 660 support
 pip install -e .
 
 ```
+
+problem solving : I(Yining) met some problem for the torch with cuda 11.8. The final solution is using `pip uninstall torch torchvision`, and call `pip install torch==2.1.2 torchvision==0.16.2 --index-url https://download.pytorch.org/whl/cu118` separately
 
 ### Install train
 

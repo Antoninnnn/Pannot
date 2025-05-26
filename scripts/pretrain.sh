@@ -14,10 +14,29 @@
 
 
 module purge
-module load GCC/12.3.0 CUDA/11.8.0 Anaconda3
-eval "$(conda shell.bash hook)"
+module load CUDA/11.8.0 Anaconda3
+# eval "$(conda shell.bash hook)"
+
+# Set CUDA environment variables on Grace HPRC of TAMU
+export LD_LIBRARY_PATH=$EBROOTCUDA/lib64:$LD_LIBRARY_PATH
+
+# Set Hugging Face cache directory to a writable location
+export TRANSFORMERS_CACHE=$SCRATCH/hf_cache
+
+# # Create the directory if it doesn't exist
+# mkdir -p $TRANSFORMERS_CACHE
+
 
 source activate pannot-dev
+
+# # The reason I deactivate and activate again is that 
+# # I want to make sure the python is used in the environment,
+# # not the one in the system.
+# # (the problem would occur when i activate and directly call python)
+conda deactivate 
+
+source activate pannot-dev
+
 
 # Example: Pannot pretraining script (multimodal: protein sequence + structure)
 # Be sure to set these environment variables or modify inline:
@@ -26,7 +45,7 @@ MODEL_VERSION=llama-2-7b-chat
 PROMPT_VERSION=plain
 
 # Customize these:
-DATA_PATH=/scratch/user/yining_yang/TAMU/PhD/Pannot/data/opi/OPI_full_1.61M_train_first_10000.json
+DATA_PATH=$SCRATCH/TAMU/PhD/Pannot/data/opi/OPI_full_1.61M_train_first_10000.json
 OUTPUT_DIR=./checkpoints/pannot-${MODEL_VERSION}-pretrain-v00
 SEQ_TOWER=ESM
 STR_TOWER=ESMIF
