@@ -41,7 +41,7 @@ source activate pannot-dev
 # Example: Pannot pretraining script (multimodal: protein sequence + structure)
 # Be sure to set these environment variables or modify inline:
 
-MODEL_VERSION=Llama-3.1-8B
+MODEL_VERSION=Meta-Llama-3.1-8B-Instruct
 PROMPT_VERSION=plain
 
 # Customize these:

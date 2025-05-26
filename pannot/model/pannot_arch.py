@@ -47,7 +47,7 @@ class PannotMetaModel:
         return getattr(self, 'struc_tower', None)
 
     def initialize_seq_modules(self, model_args, fsdp=None):
-        self.config.mm_seq_tower = model_args.seq_tower
+        self.config.mm_seq_tower = model_args.mm_seq_tower
         self.config.mm_seq_select_layer = model_args.mm_seq_select_layer
         self.config.mm_seq_select_feature = model_args.mm_seq_select_feature
         self.config.use_mm_seq_proj = True
@@ -75,7 +75,7 @@ class PannotMetaModel:
             )
 
     def initialize_str_modules(self, model_args, fsdp=None):
-        self.config.mm_struc_tower = model_args.struc_tower
+        self.config.mm_struc_tower = model_args.mm_struc_tower
         self.config.mm_str_select_layer = model_args.mm_str_select_layer
         self.config.mm_str_select_feature = model_args.mm_str_select_feature
         self.config.use_mm_str_proj = True
