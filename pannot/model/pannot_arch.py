@@ -88,6 +88,8 @@ class PannotMetaModel:
             struc_tower = self.struc_tower[0] if fsdp else self.struc_tower
             struc_tower.load_model()
 
+        print("The hidden dim for struc tower is",struc_tower.structure_tower.emb_dim)
+
         if not struc_tower.is_loaded:
             struc_tower.load_model()
             print("struc tower loaded with force")
