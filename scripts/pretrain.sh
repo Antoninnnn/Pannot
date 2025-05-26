@@ -23,6 +23,10 @@ export LD_LIBRARY_PATH=$EBROOTCUDA/lib64:$LD_LIBRARY_PATH
 # Set Hugging Face cache directory to a writable location
 export HF_HOME=$SCRATCH/hf_cache
 
+#Set the Torch cache directory in the $SCRATCH
+
+export TORCH_HOME=$SCRATCH/.cache/torch
+
 # # Create the directory if it doesn't exist
 # mkdir -p $TRANSFORMERS_CACHE
 

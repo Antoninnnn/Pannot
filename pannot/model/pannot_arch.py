@@ -88,6 +88,10 @@ class PannotMetaModel:
             struc_tower = self.struc_tower[0] if fsdp else self.struc_tower
             struc_tower.load_model()
 
+        if not struc_tower.is_loaded:
+            struc_tower.load_model()
+            print("struc tower loaded with force")
+
         self.config.mm_str_hidden_size = struc_tower.hidden_size
         self.config.mm_struc_projector_type = getattr(model_args, 'mm_struc_projector_type', 'linear')
 
