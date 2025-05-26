@@ -995,7 +995,8 @@ class LazySupervisedProteinDataset(Dataset):
                  seq_tower=None,
                  struc_tower=None):
         super().__init__()
-        self.list_data_dict = json.load(open(data_path, "r"))
+        with open(data_path, 'r') as f:
+            self.list_data_dict = [json.loads(line) for line in f if line.strip()]
         self.tokenizer = tokenizer
         self.data_args = data_args
         self.seq_tower = seq_tower  # Should have .tokenize()
