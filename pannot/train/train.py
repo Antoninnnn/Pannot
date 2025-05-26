@@ -1285,6 +1285,13 @@ def train(attn_implementation=None):
             conversation_lib.default_conversation = conversation_lib.conv_templates[model_args.version]
         else:
             conversation_lib.default_conversation = conversation_lib.conv_templates["vicuna_v1"]
+    if tokenizer.pad_token is None:
+        print(f"Adding pad token as '<pad>'")
+        smart_tokenizer_and_embedding_resize(
+            special_tokens_dict=dict(pad_token="<pad>"),
+            tokenizer=tokenizer,
+            model=model,
+        )
     print("tokenzier pad token id", tokenizer.pad_token_id)
     # if model_args.vision_tower is not None:
     #     model.get_model().initialize_vision_modules(
