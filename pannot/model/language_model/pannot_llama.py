@@ -78,6 +78,7 @@ class PannotLlamaForCausalLM(LlamaForCausalLM, PannotMetaForCausalLM):
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
         seq_input_ids: Optional[List[torch.Tensor]] = None,
+        seq_attention_mask: Optional[List[torch.Tensor]] = None,
         struc_coords: Optional[List[torch.Tensor]] = None,
    
         **kwargs,
@@ -101,6 +102,7 @@ class PannotLlamaForCausalLM(LlamaForCausalLM, PannotMetaForCausalLM):
                 # seqs=seqs,
                 # strs=strs,
                 seqs=seq_input_ids,
+                seq_attention_mask=seq_attention_mask
                 strs=struc_coords,
             )
 

@@ -226,8 +226,8 @@ class PannotMetaForCausalLM(ABC):
     def get_struc_tower(self):
         return self.get_model().get_struc_tower()
 
-    def encode_seqs(self, seqs):
-        seq_features = self.get_seq_tower()(seqs)
+    def encode_seqs(self, seqs, seq_attention_mask):
+        seq_features = self.get_seq_tower()(seqs, seq_attention_mask)
         seq_features = self.get_model().seq_projector(seq_features)
         return seq_features
 
@@ -238,7 +238,7 @@ class PannotMetaForCausalLM(ABC):
 
     def prepare_inputs_labels_for_multimodal(
         self, input_ids, position_ids, attention_mask, past_key_values, labels,
-        seqs=None, strs=None
+        seqs=None, seq_attention_mask= None, strs=None
     ):
         seq_tower = self.get_seq_tower()
         struc_tower = self.get_struc_tower()
@@ -302,7 +302,9 @@ class PannotMetaForCausalLM(ABC):
 
                 # Add special modality features
                 if all_specials[i + 1][1] == 'seq':
-                    seq_feature = self.encode_seqs(seqs[cur_seq_idx])
+                    ## sequenece has 2 inputs: seqs(seq_input_ids) and seq_attention_mask(sequence attention mask)
+                    seq_feature = self.encode_seqs(seqs[cur_seq_idx], seq_attention_mask[cur_seq_idx]) 
+                    
                     cur_embed_segments.append(seq_feature)
                     cur_label_segments.append(torch.full((seq_feature.shape[0],), IGNORE_INDEX, dtype=cur_labels.dtype, device=cur_labels.device))
                     
@@ -325,6 +327,7 @@ class PannotMetaForCausalLM(ABC):
                                     
                     cur_seq_idx += 1
                 elif all_specials[i + 1][1] == 'str':
+                    # Structure would introduce the struc_coords as input
                     str_feature = self.encode_strs(strs[cur_str_idx])
                     cur_embed_segments.append(str_feature)
                     cur_label_segments.append(torch.full((str_feature.shape[0],), IGNORE_INDEX, dtype=cur_labels.dtype, device=cur_labels.device))

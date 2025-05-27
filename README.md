@@ -44,4 +44,22 @@ pip install "flash-attn<=2.5.6" --no-build-isolation
 ```
 
 ## Model
+test code
+```
+srun --partition=gpu --gres=gpu:1 --nodes=1 --ntasks=1 --cpus-per-task=4 --mem=64G --time=02:00:00 --pty bash
+```
 
+
+## Data interface 
+
+### Frames For natural language:
+input_ids
+labels
+attention_mask
+
+### Frames For sequence input:
+seq_input_ids
+seq_attention_mask
+
+### Frames For strucuture input:
+struct_coords
