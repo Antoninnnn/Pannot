@@ -1095,8 +1095,10 @@ class LazySupervisedProteinDataset(Dataset):
 
 @dataclass
 class DataCollatorForSupervisedProteinDataset(object):
-    tokenizer: transformers.PreTrainedTokenizer
-
+    def __init__(self, tokenizer, seq_tokenizer):
+        self.tokenizer = tokenizer            # LLaMA tokenizer
+        self.seq_tokenizer = seq_tokenizer   
+    
     def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
         input_ids = [instance["input_ids"] for instance in instances]
         labels = [instance["labels"] for instance in instances]
@@ -1119,7 +1121,7 @@ class DataCollatorForSupervisedProteinDataset(object):
             seq_input_ids = [inst["seq_input_ids"] for inst in instances]
             seq_attention_mask = [inst["seq_attention_mask"] for inst in instances]
             batch["seq_input_ids"] = torch.nn.utils.rnn.pad_sequence(
-                seq_input_ids, batch_first=True, padding_value=self.tokenizer.pad_token_id
+                seq_input_ids, batch_first=True, padding_value=self.seq_tokenizer.pad_token_id
             )
             batch["seq_attention_mask"] = torch.nn.utils.rnn.pad_sequence(
                 seq_attention_mask, batch_first=True, padding_value=0
@@ -1184,6 +1186,7 @@ class DataCollatorForSupervisedProteinDataset(object):
 
 def make_supervised_data_module(
     tokenizer: transformers.PreTrainedTokenizer,
+    seq_tokenizer: transformers.PreTrainedTokenizer,
     data_args,
     seq_tower=None,
     str_tower=None
@@ -1198,7 +1201,7 @@ def make_supervised_data_module(
     )
                                 
     print("Loaded training examples from: ", data_args.data_path)
-    data_collator = DataCollatorForSupervisedProteinDataset(tokenizer=tokenizer)
+    data_collator = DataCollatorForSupervisedProteinDataset(tokenizer=tokenizer, seq_tokenizer =seq_tokenizer)
     return dict(train_dataset=train_dataset,
                 eval_dataset=None,
                 data_collator=data_collator)
@@ -1421,6 +1424,7 @@ def train(attn_implementation=None):
                     module.to(torch.bfloat16)
 
     data_module = make_supervised_data_module(tokenizer=tokenizer,
+                                              seq_tokenizer=model.get_seq_tower().tokenizer,
                                               data_args=data_args,
                                               seq_tower=model.get_seq_tower(),
                                               str_tower=model.get_struc_tower()
