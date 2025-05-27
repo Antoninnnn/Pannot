@@ -18,8 +18,27 @@ module load CUDA/11.8.0 Anaconda3
 # eval "$(conda shell.bash hook)"
 
 # For multi nodes training, you need to set the following packages :
-module load GCC/10.3.0 OpenMPI/4.1.1
+ml GCC/10.3.0 
 
+# # Create a build directory
+# mkdir -p $SCRATCH/pdsh_build && cd $SCRATCH/pdsh_build
+
+# # Download the latest pdsh source
+# wget https://github.com/chaos/pdsh/releases/download/pdsh-2.34/pdsh-2.34.tar.gz
+
+# # Extract it
+# tar -xvzf pdsh-2.34.tar.gz
+# cd pdsh-2.34
+
+# # Configure installation prefix (choose your install path)
+# ./configure --prefix=$SCRATCH/local/pdsh
+
+# # Build and install
+# make -j
+# make install
+# # ml OpenMPI/4.1.1
+
+export PATH=$SCRATCH/local/pdsh/bin:$PATH
 
 # Set CUDA environment variables on Grace HPRC of TAMU
 export LD_LIBRARY_PATH=$EBROOTCUDA/lib64:$LD_LIBRARY_PATH
@@ -30,6 +49,11 @@ export HF_HOME=$SCRATCH/hf_cache
 #Set the Torch cache directory in the $SCRATCH
 
 export TORCH_HOME=$SCRATCH/.cache/torch
+
+# # # Set the Torch cache directory in the $SCRATCH for every node
+# NODES=$(scontrol show hostnames $SLURM_JOB_NODELIST | paste -sd, -)
+# pdsh -R ssh -w $NODES "export TORCH_HOME=$SCRATCH/.cache/torch; echo \$HOSTNAME uses \$TORCH_HOME"
+
 
 # # Create the directory if it doesn't exist
 # mkdir -p $TRANSFORMERS_CACHE
@@ -74,52 +98,7 @@ scontrol show hostnames $SLURM_NODELIST | sed 's/$/ slots=2/' > scripts/hostfile
 
 # export CUDA_LAUNCH_BLOCKING=1
 
-# deepspeed --hostfile ./scripts/hostfile.txt --num_gpus 2\
-#     pannot/train/train_mem.py \
-#     --deepspeed ./scripts/zero2.json \
-#     --model_name_or_path local_pretrained_llm/$MODEL_VERSION \
-#     --version $PROMPT_VERSION \
-#     --data_path ${DATA_PATH} \
-#     --tune_mm_mlp_adapter True \
-#     --bf16 True \
-#     --output_dir ${OUTPUT_DIR} \
-#     --num_train_epochs 1 \
-#     --per_device_train_batch_size 4 \
-#     --per_device_eval_batch_size 4 \
-#     --gradient_accumulation_steps 1 \
-#     --evaluation_strategy "no" \
-#     --save_strategy "steps" \
-#     --save_steps 24000 \
-#     --save_total_limit 1 \
-#     --learning_rate 2e-3 \
-#     --weight_decay 0.0 \
-#     --warmup_ratio 0.03 \
-#     --lr_scheduler_type "cosine" \
-#     --logging_steps 1 \
-#     --tf32 True \
-#     --model_max_length 2048 \
-#     --gradient_checkpointing True \
-#     --dataloader_num_workers 4 \
-#     --lazy_preprocess True \
-#     --report_to wandb \
-#     --use_seq_tower True \
-#     --mm_seq_tower $SEQ_TOWER \
-#     --mm_seq_projector_type linear \
-#     --mm_seq_select_layer -1 \
-#     --mm_seq_select_feature "cls"\
-#     --mm_seq_no_pooling True \
-#     --use_str_tower True \
-#     --mm_struc_tower $STR_TOWER \
-#     --mm_str_projector_type linear \
-#     --mm_str_select_layer -1 \
-#     --mm_str_select_feature "residue" 
- 
-mpirun -np 8 \
-  --hostfile ./scripts/hostfile.txt \
-  --bind-to none --map-by slot \
-  -x NCCL_DEBUG=INFO -x LD_LIBRARY_PATH -x PATH \
-  -mca pml ob1 -mca btl ^openib \
-  deepspeed --launcher=mpi \
+deepspeed --hostfile ./scripts/hostfile.txt --num_gpus 2\
     pannot/train/train_mem.py \
     --deepspeed ./scripts/zero2.json \
     --model_name_or_path local_pretrained_llm/$MODEL_VERSION \
@@ -151,10 +130,56 @@ mpirun -np 8 \
     --mm_seq_tower $SEQ_TOWER \
     --mm_seq_projector_type linear \
     --mm_seq_select_layer -1 \
-    --mm_seq_select_feature "cls" \
+    --mm_seq_select_feature "cls"\
     --mm_seq_no_pooling True \
     --use_str_tower True \
     --mm_struc_tower $STR_TOWER \
     --mm_str_projector_type linear \
     --mm_str_select_layer -1 \
-    --mm_str_select_feature "residue"
+    --mm_str_select_feature "residue" 
+ 
+# export HOSTFILE=$(realpath ./scripts/hostfile.txt)
+
+# mpirun -np 8 --hostfile $HOSTFILE \
+#   --bind-to none --map-by slot \
+#   -x NCCL_DEBUG=INFO -x LD_LIBRARY_PATH -x PATH \
+#   -mca pml ob1 -mca btl ^openib \
+#   deepspeed --launcher=mpi \
+#     --hostfile $HOSTFILE \
+#     pannot/train/train_mem.py \
+#     --model_name_or_path local_pretrained_llm/$MODEL_VERSION \
+#     --version $PROMPT_VERSION \
+#     --data_path ${DATA_PATH} \
+#     --tune_mm_mlp_adapter True \
+#     --bf16 True \
+#     --output_dir ${OUTPUT_DIR} \
+#     --num_train_epochs 1 \
+#     --per_device_train_batch_size 4 \
+#     --per_device_eval_batch_size 4 \
+#     --gradient_accumulation_steps 1 \
+#     --evaluation_strategy "no" \
+#     --save_strategy "steps" \
+#     --save_steps 24000 \
+#     --save_total_limit 1 \
+#     --learning_rate 2e-3 \
+#     --weight_decay 0.0 \
+#     --warmup_ratio 0.03 \
+#     --lr_scheduler_type "cosine" \
+#     --logging_steps 1 \
+#     --tf32 True \
+#     --model_max_length 2048 \
+#     --gradient_checkpointing True \
+#     --dataloader_num_workers 4 \
+#     --lazy_preprocess True \
+#     --report_to wandb \
+#     --use_seq_tower True \
+#     --mm_seq_tower $SEQ_TOWER \
+#     --mm_seq_projector_type linear \
+#     --mm_seq_select_layer -1 \
+#     --mm_seq_select_feature "cls" \
+#     --mm_seq_no_pooling True \
+#     --use_str_tower True \
+#     --mm_struc_tower $STR_TOWER \
+#     --mm_str_projector_type linear \
+#     --mm_str_select_layer -1 \
+#     --mm_str_select_feature "residue"
