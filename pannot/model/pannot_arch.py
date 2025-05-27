@@ -228,12 +228,12 @@ class PannotMetaForCausalLM(ABC):
 
     def encode_seqs(self, seqs, seq_attention_mask):
         seq_features = self.get_seq_tower()(seqs, seq_attention_mask)
-        seq_features = self.get_model().seq_projector(seq_features)
+        seq_features = self.get_model().mm_seq_projector(seq_features)
         return seq_features
 
     def encode_strs(self, strs):
         str_features = self.get_struc_tower()(strs)
-        str_features = self.get_model().struc_projector(str_features)
+        str_features = self.get_model().mm_struc_projector(str_features)
         return str_features
 
     def prepare_inputs_labels_for_multimodal(
