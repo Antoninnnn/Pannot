@@ -44,16 +44,19 @@ class ESMSeqTower(nn.Module):
         if not self.is_loaded:
             self.load_model()
 
-        # if input_ids.dim() == 1:
-        #     input_ids = input_ids.unsqueeze(0)
+        if input_ids.dim() == 1:
+            input_ids = input_ids.unsqueeze(0)
         input_ids = input_ids.to(self.device)
         
         if attention_mask is None:
             attention_mask = torch.ones_like(input_ids)
 
-        # if attention_mask.dim() == 1:
-        #     attention_mask = attention_mask.unsqueeze(0)
+        if attention_mask.dim() == 1:
+            attention_mask = attention_mask.unsqueeze(0)
         attention_mask = attention_mask.to(self.device)
+
+        vocab_size = self.encoder.config.vocab_size
+        assert (input_ids < vocab_size).all(), f"Token id out of range! Max: {input_ids.max().item()}, vocab_size: {vocab_size}"
 
         outputs = self.encoder(input_ids=input_ids, attention_mask=attention_mask)
         hidden_states = outputs.hidden_states[self.select_layer]
