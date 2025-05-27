@@ -1060,9 +1060,21 @@ class LazySupervisedProteinDataset(Dataset):
             self.tokenizer,
             has_protein=(sequence is not None or structure is not None)
         )
+        # data_dict = {
+        #     "input_ids": data_dict["input_ids"][0],
+        #     "labels": data_dict["labels"][0]
+        # }
+        input_ids = data_dict["input_ids"][0]
+        labels = data_dict["labels"][0]
+
+        # 🔒 Length check: skip long sequences
+        if len(input_ids) > self.tokenizer.model_max_length:
+            print(f"[SKIP] idx {idx} too long ({len(input_ids)} > {self.tokenizer.model_max_length})")
+            return self.__getitem__((idx + 1) % len(self.list_data_dict))  # try next index safely
+
         data_dict = {
-            "input_ids": data_dict["input_ids"][0],
-            "labels": data_dict["labels"][0]
+            "input_ids": input_ids,
+            "labels": labels
         }
 
 

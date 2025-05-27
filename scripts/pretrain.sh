@@ -49,7 +49,8 @@ MODEL_VERSION=Meta-Llama-3.1-8B-Instruct
 PROMPT_VERSION=plain
 
 # Customize these:
-DATA_PATH=$SCRATCH/TAMU/PhD/Pannot/data/opi/OPI_full_1.61M_train_first_10000.json
+# DATA_PATH=$SCRATCH/TAMU/PhD/Pannot/data/opi/OPI_full_1.61M_train_first_10000.json
+DATA_PATH=$SCRATCH/TAMU/PhD/Pannot/data/opi/OPI_full_1.61M_train_converted.jsonl
 OUTPUT_DIR=./checkpoints/pannot-${MODEL_VERSION}-pretrain-v00
 SEQ_TOWER=ESM
 STR_TOWER=ESMIF
@@ -75,7 +76,7 @@ deepspeed --hostfile ./script/hostfile.txt --num_gpus 2\
     --bf16 True \
     --output_dir ${OUTPUT_DIR} \
     --num_train_epochs 1 \
-    --per_device_train_batch_size 16 \
+    --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 1 \
     --evaluation_strategy "no" \

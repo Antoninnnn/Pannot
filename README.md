@@ -52,6 +52,11 @@ srun --partition=gpu --gres=gpu:1 --nodes=1 --ntasks=1 --cpus-per-task=4 --mem=6
 
 ## Data interface 
 
+### OPI
+```
+jq -c '.[]' $DATA_PATH > ${DATA_PATH%.json}_converted.jsonl
+```
+
 ### Frames For natural language:
 input_ids
 labels
