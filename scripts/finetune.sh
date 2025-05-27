@@ -35,7 +35,7 @@ source activate pannot-dev
 
 # # The reason I deactivate and activate again is that 
 # # I want to make sure the python is used in the environment,
-# # not the one in the system.
+# # not the default python in the system.(in sw/...)
 # # (the problem would occur when i activate and directly call python)
 conda deactivate 
 
@@ -49,8 +49,9 @@ MODEL_VERSION=Meta-Llama-3.1-8B-Instruct
 PROMPT_VERSION=plain
 
 # Customize these:
-DATA_PATH=$SCRATCH/TAMU/PhD/Pannot/data/opi/OPI_full_1.61M_train_first_10000.json
-OUTPUT_DIR=./checkpoints/pannot-${MODEL_VERSION}-pretrain-v00
+DATA_PATH=$SCRATCH/TAMU/PhD/Pannot/data/opi/OPI_full_1.61M_train.json
+# DATA_PATH=$SCRATCH/TAMU/PhD/Pannot/data/opi/OPI_full_1.61M_train_first_10000.json
+OUTPUT_DIR=./checkpoints/pannot-${MODEL_VERSION}-pretrain-v01
 SEQ_TOWER=ESM
 STR_TOWER=ESMIF
 
@@ -65,8 +66,7 @@ export WANDB_MODE=offline  # or remove this if online logging is available
 export WANDB_DIR=$SCRATCH/wandb_logs
 
 # export CUDA_LAUNCH_BLOCKING=1
-deepspeed --hostfile ./script/hostfile.txt --num_gpus 2\
-    pannot/train/train_mem.py \
+deepspeed pannot/train/train_mem.py \
     --deepspeed ./scripts/zero2.json \
     --model_name_or_path local_pretrained_llm/$MODEL_VERSION \
     --version $PROMPT_VERSION \
@@ -103,5 +103,4 @@ deepspeed --hostfile ./script/hostfile.txt --num_gpus 2\
     --mm_struc_tower $STR_TOWER \
     --mm_str_projector_type linear \
     --mm_str_select_layer -1 \
-    --mm_str_select_feature "residue" 
- 
+    --mm_str_select_feature "residue"

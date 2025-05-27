@@ -65,8 +65,7 @@ export WANDB_MODE=offline  # or remove this if online logging is available
 export WANDB_DIR=$SCRATCH/wandb_logs
 
 # export CUDA_LAUNCH_BLOCKING=1
-deepspeed --hostfile ./script/hostfile.txt --num_gpus 2\
-    pannot/train/train_mem.py \
+deepspeed pannot/train/train_mem.py \
     --deepspeed ./scripts/zero2.json \
     --model_name_or_path local_pretrained_llm/$MODEL_VERSION \
     --version $PROMPT_VERSION \
@@ -103,5 +102,5 @@ deepspeed --hostfile ./script/hostfile.txt --num_gpus 2\
     --mm_struc_tower $STR_TOWER \
     --mm_str_projector_type linear \
     --mm_str_select_layer -1 \
-    --mm_str_select_feature "residue" 
- 
+    --mm_str_select_feature "residue" \
+    --per_device_train_batch_size 8
