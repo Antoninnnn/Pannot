@@ -294,6 +294,9 @@ class PannotMetaForCausalLM(ABC):
             cur_embed_segments = []
             cur_label_segments = []
 
+            print("seq_input_id: ----",seqs)
+
+
             for i in range(len(all_specials) - 1):
                 start = all_specials[i][0] + 1
                 end = all_specials[i + 1][0]
