@@ -307,7 +307,8 @@ class PannotMetaForCausalLM(ABC):
                 if all_specials[i + 1][1] == 'seq':
                     ## sequenece has 2 inputs: seqs(seq_input_ids) and seq_attention_mask(sequence attention mask)
                     seq_feature = self.encode_seqs(seqs[cur_seq_idx], seq_attention_mask[cur_seq_idx]) 
-                    
+                    if seq_feature.dim() == 3 and seq_feature.shape[0] == 1:
+                        seq_feature = seq_feature.squeeze(0)  # Make it [L, D] 
                     cur_embed_segments.append(seq_feature)
                     cur_label_segments.append(torch.full((seq_feature.shape[0],), IGNORE_INDEX, dtype=cur_labels.dtype, device=cur_labels.device))
                     
@@ -332,6 +333,8 @@ class PannotMetaForCausalLM(ABC):
                 elif all_specials[i + 1][1] == 'str':
                     # Structure would introduce the struc_coords as input
                     str_feature = self.encode_strs(strs[cur_str_idx])
+                    if str_feature.dim() == 3 and str_feature.shape[0] == 1:
+                        str_feature = str_feature.squeeze(0)  # Make it [L, D] 
                     cur_embed_segments.append(str_feature)
                     cur_label_segments.append(torch.full((str_feature.shape[0],), IGNORE_INDEX, dtype=cur_labels.dtype, device=cur_labels.device))
                     cur_str_idx += 1
