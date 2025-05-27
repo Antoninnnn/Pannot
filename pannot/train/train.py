@@ -1035,7 +1035,7 @@ class LazySupervisedProteinDataset(Dataset):
         output = sample['output']
         sequence = sample.get('input', None)
         structure = sample.get('structure', None)
-        print("obtained sequence: ",sequence)
+        # print("obtained sequence: ",sequence)
 
         # Build multimodal-aware prompt with <seq> and/or <str>
         prompt_parts = [instruction]
@@ -1073,10 +1073,10 @@ class LazySupervisedProteinDataset(Dataset):
 
         # Step 3: Protein sequence processing
         if sequence is not None and self.seq_tower is not None:
-            print("[INFO] Sequence preprocessing: ", sequence)
+            # print("[INFO] Sequence preprocessing: ", sequence)
             seq_tokenized = self.seq_tower.tokenize([sequence],
                                                     return_tensors='pt', padding=True, truncation=True)
-            print("processed seq_tokenized: ", seq_tokenized)
+            # print("processed seq_tokenized: ", seq_tokenized)
             data_dict["seq_input_ids"] = seq_tokenized["input_ids"][0]
             data_dict["seq_attention_mask"] = seq_tokenized["attention_mask"][0]
 
@@ -1426,25 +1426,25 @@ def train(attn_implementation=None):
                                               str_tower=model.get_struc_tower()
     )
 
-    dataset = data_module["train_dataset"]
-    collator = data_module['data_collator']
+    # dataset = data_module["train_dataset"]
+    # collator = data_module['data_collator']
 
-    # === Step 4: Test a batch ===
-    sample = dataset[0]
-    print("\n--- Sample Output ---")
-    print("input_ids:", sample["input_ids"])
-    print("labels:", sample["labels"])
-    print("sequence:", sample["seq_input_ids"])
-    # print("structure:", sample["structure"])
+    # # === Step 4: Test a batch ===
+    # sample = dataset[0]
+    # print("\n--- Sample Output ---")
+    # print("input_ids:", sample["input_ids"])
+    # print("labels:", sample["labels"])
+    # print("sequence:", sample["seq_input_ids"])
+    # # print("structure:", sample["structure"])
 
-    # Collate one batch
-    batch = collator([sample])
-    print("\n--- Collated Batch ---")
-    print("input_ids shape:", batch["input_ids"].shape)
-    print("labels shape:", batch["labels"].shape)
-    print("attention_mask shape:", batch["attention_mask"].shape)
-    print("seq_input_ids:", batch.get("seq_input_ids", "[seq_input_ids not returned by collator]"))
-    print("struc_coords:", batch.get("struc_coords", "[struc_coords not returned by collator]"))
+    # # Collate one batch
+    # batch = collator([sample])
+    # print("\n--- Collated Batch ---")
+    # print("input_ids shape:", batch["input_ids"].shape)
+    # print("labels shape:", batch["labels"].shape)
+    # print("attention_mask shape:", batch["attention_mask"].shape)
+    # print("seq_input_ids:", batch.get("seq_input_ids", "[seq_input_ids not returned by collator]"))
+    # print("struc_coords:", batch.get("struc_coords", "[struc_coords not returned by collator]"))
         
     trainer = PannotTrainer(model=model,
                     tokenizer=tokenizer,

@@ -77,6 +77,10 @@ class PannotLlamaForCausalLM(LlamaForCausalLM, PannotMetaForCausalLM):
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
+        seq_input_ids: Optional[List[torch.Tensor]] = None,
+        struc_coords: Optional[List[torch.Tensor]] = None,
+   
+        **kwargs,
     ) -> Union[Tuple, CausalLMOutputWithPast]:
 
         # only build inputs_embeds once
@@ -94,8 +98,10 @@ class PannotLlamaForCausalLM(LlamaForCausalLM, PannotMetaForCausalLM):
                 attention_mask,
                 past_key_values,
                 labels,
-                seqs=seqs,
-                strs=strs,
+                # seqs=seqs,
+                # strs=strs,
+                seqs=seq_input_ids,
+                strs=struc_coords,
             )
 
         return super().forward(
