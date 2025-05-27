@@ -294,7 +294,7 @@ class PannotMetaForCausalLM(ABC):
             cur_embed_segments = []
             cur_label_segments = []
 
-            print("seq_input_id: ----",seqs)
+            # print("seq_input_id: ----",seqs)
 
 
             for i in range(len(all_specials) - 1):
@@ -345,6 +345,16 @@ class PannotMetaForCausalLM(ABC):
             # cur_embed_segments = [
             #     seg.view(-1, seg.size(-1)) if seg.dim() == 3 else seg
             #     for seg in cur_embed_segments
+            # ]
+
+            cur_label_segments = [
+                lab.view(-1) if lab.dim() == 2 else lab
+                for lab in cur_label_segments
+            ]
+
+            # cur_label_segments = [
+            #     lab.squeeze(0) if lab.dim() == 2 and lab.shape[0] == 1 else lab
+            #     for lab in cur_label_segments
             # ]
 
             final_embed = torch.cat(cur_embed_segments, dim=0).to(self.device)
