@@ -49,6 +49,10 @@ test code
 srun --partition=gpu --gres=gpu:1 --nodes=1 --ntasks=1 --cpus-per-task=4 --mem=64G --time=02:00:00 --pty bash
 ```
 
+If you need to pretrain on multi-nodes cluster, you would probably need pdsh:
+```
+conda install -c conda-forge pdsh
+```
 
 ## Data interface 
 
