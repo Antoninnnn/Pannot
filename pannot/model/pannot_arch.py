@@ -399,6 +399,11 @@ class PannotMetaForCausalLM(ABC):
 
         new_input_embeds = torch.stack(new_input_embeds_padded, dim=0)
 
+        # Ensure the dtype matches model precision (e.g., bf16, fp16)
+        target_dtype = self.get_model().embed_tokens.weight.dtype
+        new_input_embeds = new_input_embeds.to(dtype=target_dtype)
+
+
         # 如果原始标签为空，则将新的标签设置为空
         if _labels is None:
             new_labels = None
