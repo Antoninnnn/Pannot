@@ -335,6 +335,13 @@ class PannotMetaForCausalLM(ABC):
                     cur_embed_segments.append(str_feature)
                     cur_label_segments.append(torch.full((str_feature.shape[0],), IGNORE_INDEX, dtype=cur_labels.dtype, device=cur_labels.device))
                     cur_str_idx += 1
+            
+
+            # Ensure all segments are 2D [seq_len, hidden_dim]
+            cur_embed_segments = [
+                seg.squeeze(0) if seg.dim() == 3 and seg.shape[0] == 1 else seg
+                for seg in cur_embed_segments
+            ] 
 
             final_embed = torch.cat(cur_embed_segments, dim=0).to(self.device)
             final_labels = torch.cat(cur_label_segments, dim=0).to(self.device)
