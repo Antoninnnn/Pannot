@@ -80,7 +80,6 @@ class PannotLlamaForCausalLM(LlamaForCausalLM, PannotMetaForCausalLM):
         seq_input_ids: Optional[List[torch.Tensor]] = None,
         seq_attention_mask: Optional[List[torch.Tensor]] = None,
         struc_coords: Optional[List[torch.Tensor]] = None,
-   
         **kwargs,
     ) -> Union[Tuple, CausalLMOutputWithPast]:
 
@@ -94,11 +93,11 @@ class PannotLlamaForCausalLM(LlamaForCausalLM, PannotMetaForCausalLM):
                 inputs_embeds,
                 labels
             ) = self.prepare_inputs_labels_for_multimodal(
-                input_ids,
-                position_ids,
-                attention_mask,
-                past_key_values,
-                labels,
+                input_ids =input_ids,
+                position_ids=position_ids,
+                attention_mask=attention_mask,
+                past_key_values=past_key_values,
+                labels=labels,
                 # seqs=seqs,
                 # strs=strs,
                 seqs=seq_input_ids,
