@@ -40,6 +40,8 @@ class ESMIFTower(nn.Module):
         if self.is_loaded:
             print(f"{self.structure_tower_name} is already loaded. Skipping.")
             return
+        
+        
 
         model, alphabet = getattr(esm.pretrained, self.structure_tower_name)()
         self.structure_tower = model.eval().requires_grad_(False)
