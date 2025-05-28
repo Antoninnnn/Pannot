@@ -362,6 +362,20 @@ conv_llava_llama_2 = Conversation(
     sep2="</s>",
 )
 
+conv_pannot_llama_2 = Conversation(
+    system="You are a helpful language and protein assistant. "
+           "You are able to understand the protein multimodal content that the user provides, "
+           "and assist the user with a variety of tasks using natural language.",
+    roles=("USER", "ASSISTANT"),
+    version="llama_v2",
+    messages=(),
+    offset=0,
+    sep_style=SeparatorStyle.LLAMA_2,
+    sep="<s>",
+    sep2="</s>",
+)
+
+
 conv_mpt = Conversation(
     system="""<|im_start|>system
 A conversation between a user and an LLM-based AI assistant. The assistant gives helpful and honest answers.""",
@@ -394,10 +408,34 @@ conv_llava_v0 = Conversation(
     sep="###",
 )
 
+conv_pannot_v0 = Conversation(
+    system="A chat between a curious human and an artificial intelligence assistant. "
+           "The assistant gives helpful, detailed, and polite answers to the human's questions.",
+    roles=("Human", "Assistant"),
+    messages=(
+    ),
+    offset=0,
+    sep_style=SeparatorStyle.SINGLE,
+    sep="###",
+)
+
 conv_llava_v0_mmtag = Conversation(
     system="A chat between a curious user and an artificial intelligence assistant. "
            "The assistant is able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language."
            "The visual content will be provided with the following format: <Image>visual content</Image>.",
+    roles=("Human", "Assistant"),
+    messages=(
+    ),
+    offset=0,
+    sep_style=SeparatorStyle.SINGLE,
+    sep="###",
+    version="v0_mmtag",
+)
+
+conv_pannot_v0_mmtag = Conversation(
+    system="A chat between a curious user and an artificial intelligence assistant. "
+           "The assistant is able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language."
+           "The protein content will be provided with the following format: <seq_start>protein sequence content<seq_end>, <str_start>protein structure content<str_end>.",
     roles=("Human", "Assistant"),
     messages=(
     ),
@@ -419,10 +457,35 @@ conv_llava_v1 = Conversation(
     sep2="</s>",
 )
 
+conv_pannot_v1 = Conversation(
+    system="A chat between a curious human and an artificial intelligence assistant. "
+           "The assistant gives helpful, detailed, and polite answers to the human's questions.",
+    roles=("USER", "ASSISTANT"),
+    version="v1",
+    messages=(),
+    offset=0,
+    sep_style=SeparatorStyle.TWO,
+    sep=" ",
+    sep2="</s>",
+)
+
 conv_llava_v1_mmtag = Conversation(
     system="A chat between a curious user and an artificial intelligence assistant. "
            "The assistant is able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language."
            "The visual content will be provided with the following format: <Image>visual content</Image>.",
+    roles=("USER", "ASSISTANT"),
+    messages=(),
+    offset=0,
+    sep_style=SeparatorStyle.TWO,
+    sep=" ",
+    sep2="</s>",
+    version="v1_mmtag",
+)
+
+conv_pannot_v1_mmtag = Conversation(
+    system="A chat between a curious user and an artificial intelligence assistant. "
+           "The assistant is able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language."
+           "The protein content will be provided with the following format: <seq_start>protein sequence content<seq_end>, <str_start>protein structure content<str_end>.",
     roles=("USER", "ASSISTANT"),
     messages=(),
     offset=0,
@@ -468,10 +531,17 @@ conv_templates = {
     "plain": conv_llava_plain,
     "v0_plain": conv_llava_plain,
     "llava_v0": conv_llava_v0,
-    "v0_mmtag": conv_llava_v0_mmtag,
+    "pannot_v0": conv_pannot_v0,
+    
+    # "v0_mmtag": conv_llava_v0_mmtag,
+    "v0_mmtag": conv_pannot_v0_mmtag,
     "llava_v1": conv_llava_v1,
-    "v1_mmtag": conv_llava_v1_mmtag,
+    "pannot_v1": conv_pannot_v1,
+
+    # "v1_mmtag": conv_llava_v1_mmtag,
+    "v1_mmtag": conv_pannot_v1_mmtag,
     "llava_llama_2": conv_llava_llama_2,
+    "pannot_llama_2": conv_pannot_llama_2,
 
     "mpt": conv_mpt,
 }
