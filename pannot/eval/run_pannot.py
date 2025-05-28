@@ -187,12 +187,13 @@ def eval_model(args):
 
     struc_files = struc_parser(args)
     strucs = load_strucs(struc_files) if struc_files else None
+    strs_input = [torch.tensor(struc["coords"]).to(model.device) for struc in strucs]
 
     with torch.inference_mode():
         output_ids = model.generate(
             inputs=input_ids,
             seqs=seqs_tensor,
-            strs=strucs[],
+            strs=strs_input,
             do_sample=args.temperature > 0,
             temperature=args.temperature,
             top_p=args.top_p,
