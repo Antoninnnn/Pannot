@@ -3,7 +3,7 @@
 #SBATCH --output=logs/pannot_pretrain_%j.out
 #SBATCH --error=logs/pannot_pretrain_%j.err
 #SBATCH --partition=gpu
-#SBATCH --nodes=2
+#SBATCH --nodes=8
 #SBATCH --ntasks-per-node=2
 #SBATCH --cpus-per-task=16
 #SBATCH --gres=gpu:a100:2
@@ -100,7 +100,7 @@ scontrol show hostnames $SLURM_NODELIST | sed 's/$/ slots=2/' > scripts/hostfile
 
 deepspeed --hostfile ./scripts/hostfile.txt --num_gpus 2\
     pannot/train/train_mem.py \
-    --deepspeed ./scripts/zero2.json \
+    --deepspeed ./scripts/zero3.json \
     --model_name_or_path local_pretrained_llm/$MODEL_VERSION \
     --version $PROMPT_VERSION \
     --data_path ${DATA_PATH} \
@@ -108,9 +108,9 @@ deepspeed --hostfile ./scripts/hostfile.txt --num_gpus 2\
     --bf16 True \
     --output_dir ${OUTPUT_DIR} \
     --num_train_epochs 1 \
-    --per_device_train_batch_size 4 \
+    --per_device_train_batch_size 2 \
     --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 1 \
+    --gradient_accumulation_steps 2 \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
     --save_steps 24000 \
