@@ -185,7 +185,87 @@ def process_images(images, image_processor, model_cfg):
 
 
 import re
+import pickle
+import numpy as np
+from biotite.structure import AtomArray, infer_elements, filter_peptide_backbone
 
+def load_structure_from_pkl(file_path: str, chain: str = None) -> AtomArray:
+    """
+    Load a preprocessed protein structure from a .pkl file into a biotite AtomArray.
+    
+    Parameters
+    ----------
+    file_path : str
+        Path to the .pkl file containing preprocessed structure data.
+    chain : str, optional
+        Chain ID (e.g., "A") to filter atoms by chain.
+    
+    Returns
+    -------
+    AtomArray
+        Biotite AtomArray containing backbone atoms (N, CA, C).
+    """
+    # Load preprocessed data
+    with open(file_path, "rb") as f:
+        data = pickle.load(f)
+
+    coords_all_atoms = data["atom_positions"]        # (L, 37, 3)
+    atom_mask = data["atom_mask"]                    # (L, 37)
+    aatype = data["aatype"]                          # (L,)
+    res_idx = data["residue_index"]                  # (L,)
+    chain_idx = data["chain_index"]                  # (L,)
+    modeled_idx = data.get("modeled_idx", np.arange(len(aatype)))
+
+    # Fixed order of 37 standard atom names
+    fixed_atom_names = [
+        "N", "CA", "C", "O", "CB",
+        "CG", "CG1", "CG2", "CD", "CD1", "CD2",
+        "CE", "CE1", "CE2", "CE3", "CZ", "CZ2", "CZ3", "CH2",
+        "ND1", "ND2", "NE", "NE1", "NE2", "NH1", "NH2",
+        "NZ", "OD1", "OD2", "OE1", "OE2", "OG", "OG1", "OH",
+        "SD", "SG"
+    ]
+
+    # Collect atom-level data
+    atom_name_list = []
+    coord_list = []
+    res_id_list = []
+    chain_id_list = []
+
+    for i in range(coords_all_atoms.shape[0]):
+        res_atoms = coords_all_atoms[i]          # (37, 3)
+        res_mask = atom_mask[i] > 0.0            # (37,)
+
+        for j in range(37):
+            if not res_mask[j]:
+                continue
+            atom_name_list.append(fixed_atom_names[j])
+            coord_list.append(res_atoms[j])
+            res_id_list.append(res_idx[i])
+            chain_id_list.append(chr(65 + chain_idx[i]))  # assumes A-Z chains
+
+    # Build AtomArray
+    coords = np.array(coord_list)
+    atom_names = np.array(atom_name_list)
+    res_ids = np.array(res_id_list)
+    chain_ids = np.array(chain_id_list)
+
+    atoms = AtomArray(len(coords))
+    atoms.coord = coords
+    atoms.atom_name = atom_names
+    atoms.res_id = res_ids
+    atoms.chain_id = chain_ids
+    atoms.element = infer_elements(atom_names)
+
+    # Optional chain filtering
+    if chain is not None:
+        atoms = atoms[atoms.chain_id == chain]
+
+    # Keep only backbone atoms (N, CA, C)
+    backbone_mask = filter_peptide_backbone(atoms)
+    return atoms[backbone_mask]
+
+    
 def tokenizer_protein_token(prompt, tokenizer, seq_token_index=SEQ_TOKEN_INDEX, str_token_index=STR_TOKEN_INDEX, return_tensors=None):
     # Split the prompt on both <seq> and <str> while preserving the split tokens
     prompt_chunks = re.split(r'(<seq>|<str>)', prompt)
