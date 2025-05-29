@@ -1,3 +1,14 @@
+# python eval_opi_dataset_pannot.py \
+#   --input_file /scratch/user/yining_yang/TAMU/PhD/Pannot/data/opi/OPI_DATA/SU/EC_number/test/CLEAN_EC_number_price_test.jsonl \
+#   --output_file /scratch/user/yining_yang/TAMU/PhD/Pannot/results/ec_price_test_predictions.json \
+#   --model-path /scratch/user/yining_yang/TAMU/PhD/Pannot/checkpoints/pannot-Meta-Llama-3.1-8B-Instruct-pretrain-v00 \
+#   --model-base /scratch/user/yining_yang/TAMU/PhD/Pannot/local_pretrained_llm/Meta-Llama-3.1-8B-Instruct \
+#   --temperature 0.2 \
+#   --top_p 0.9 \
+#   --num_beams 1 \
+#   --max_new_tokens 2048
+
+
 import argparse
 import json
 import os
@@ -7,13 +18,14 @@ from tqdm import tqdm
 from pannot.constants import (
     DEFAULT_SEQ_TOKEN, DEFAULT_SEQ_START_TOKEN, DEFAULT_SEQ_END_TOKEN,
     DEFAULT_STR_TOKEN, DEFAULT_STR_START_TOKEN, DEFAULT_STR_END_TOKEN,
-    SEQUENCE_PLACEHOLDER
+    
 )
 from pannot.conversation import conv_templates
 from pannot.model.builder import load_pretrained_model
 from pannot.mm_utils import tokenizer_protein_token, get_model_name_from_path
 from pannot.utils import disable_torch_init
 
+SEQUENCE_PLACEHOLDER = '<seq-placeholder>'
 
 def evaluate_opi_dataset(args):
     disable_torch_init()
@@ -70,13 +82,21 @@ def evaluate_opi_dataset(args):
             full_prompt = conv.get_prompt()
 
             input_ids = tokenizer_protein_token(full_prompt, tokenizer, return_tensors="pt").unsqueeze(0).to(model.device)
-            seq_tensor = torch.tensor(model.get_seq_tower().tokenizer.tokenize(sequence, add_special_tokens=False)).to(model.device)
-
+            tokenized = model.get_seq_tower().tokenize(sequence)
+            seq_input_id = tokenized["input_ids"].squeeze(0).to(model.device)
+            seq_attention_mask = tokenized["attention_mask"].squeeze(0).to(model.device)
+            
+            print("prompt: ",full_prompt)
+            print("prompt id: ",input_ids)
+            print("seq id",seq_input_id)
+            print("seq attention",seq_attention_mask)
+            
             # Run generation
             with torch.inference_mode():
                 output_ids = model.generate(
                     inputs=input_ids,
-                    seqs=[seq_tensor],
+                    seqs=[seq_input_id],
+                    seq_attention_mask=[seq_attention_mask],
                     do_sample=args.temperature > 0,
                     temperature=args.temperature,
                     top_p=args.top_p,

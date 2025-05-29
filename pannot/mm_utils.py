@@ -187,7 +187,7 @@ def process_images(images, image_processor, model_cfg):
 import re
 import pickle
 import numpy as np
-from biotite.structure import AtomArray, guess_element, filter_peptide_backbone
+from biotite.structure import AtomArray, infer_elements, filter_peptide_backbone
 
 def load_structure_from_pkl(file_path: str, chain: str = None) -> AtomArray:
     """
@@ -255,7 +255,7 @@ def load_structure_from_pkl(file_path: str, chain: str = None) -> AtomArray:
     atoms.atom_name = atom_names
     atoms.res_id = res_ids
     atoms.chain_id = chain_ids
-    atoms.element = guess_element(atom_names)
+    atoms.element = infer_elements(atom_names)
 
     # Optional chain filtering
     if chain is not None:
