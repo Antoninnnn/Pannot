@@ -66,7 +66,7 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
             tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
             # instantiate base with that config
             model = ModelClass.from_pretrained(
-                model_base, config=cfg, low_cpu_mem_usage=True, **load_kwargs
+                model_base, config=cfg, low_cpu_mem_usage=True, **kwargs
             )
 
             # If vocab changed, reinit embedding rows
@@ -88,9 +88,38 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
         elif model_base is not None:
             tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
             cfg = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
-            model = ModelClass.from_pretrained(
-                model_base, config=cfg, low_cpu_mem_usage=True, **load_kwargs
-            )
+            # model = ModelClass.from_pretrained(
+            #     model_base, config=cfg, low_cpu_mem_usage=True, **kwargs
+            # )
+            
+            try:
+                model = ModelClass.from_pretrained(
+                    model_base, config=cfg, low_cpu_mem_usage=True, **kwargs
+                )
+            except ValueError as e:
+                print("[Warning] model.from_pretrained failed due to shape mismatch.")
+                print("Error:", e)
+                print("Attempting to patch vocab size and reload...")
+
+                # Adjust vocab_size in config to match tokenizer
+                cfg.vocab_size = len(tokenizer)
+
+                model = ModelClass.from_pretrained(
+                    model_base, config=cfg, low_cpu_mem_usage=True, **kwargs
+                )
+
+                # Resize embedding layers to match tokenizer
+                model.resize_token_embeddings(len(tokenizer))
+
+                # Initialize added tokens if any
+                embedding = model.get_input_embeddings().weight.data
+                out_embedding = model.get_output_embeddings().weight.data
+                added = len(tokenizer) - embedding.shape[0]
+                if added > 0:
+                    print(f"Resizing: {added} new tokens initialized with mean embedding")
+                    embedding[-added:] = embedding[:-added].mean(dim=0, keepdim=True)
+                    out_embedding[-added:] = out_embedding[:-added].mean(dim=0, keepdim=True)
+
             # optionally load seq/str projector weights if they exist
             seq_proj = os.path.join(model_path, "mm_seq_projector.bin")
             if os.path.isfile(seq_proj):
@@ -104,18 +133,18 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
         # 3) Plain from‐pretrained
         else:
             tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
-            model = ModelClass.from_pretrained(model_path, low_cpu_mem_usage=True, **load_kwargs)
+            model = ModelClass.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
 
         # ─── Add seq/str tokens & resize embeddings ───
         to_add = []
         cfg = model.config
 
-        if getattr(cfg, "mm_use_seq_patch_token", True):
+        if getattr(cfg, "mm_use_seq_patch_token", False):
             to_add.append(DEFAULT_SEQ_PATCH_TOKEN)
         if getattr(cfg, "mm_use_seq_start_end", False):
             to_add += [DEFAULT_SEQ_START_TOKEN, DEFAULT_SEQ_END_TOKEN]
 
-        if getattr(cfg, "mm_use_str_patch_token", True):
+        if getattr(cfg, "mm_use_str_patch_token", False):
             to_add.append(DEFAULT_STR_PATCH_TOKEN)
         if getattr(cfg, "mm_use_str_start_end", False):
             to_add += [DEFAULT_STR_START_TOKEN, DEFAULT_STR_END_TOKEN]
