@@ -1,4 +1,8 @@
-node1 slots=2
-node2 slots=2
-node3 slots=2
-node4 slots=2
+g002 slots=2
+g046 slots=2
+g047 slots=2
+g049 slots=2
+g050 slots=2
+g051 slots=2
+g052 slots=2
+g056 slots=2

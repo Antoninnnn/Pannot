@@ -1,3 +1,13 @@
 data/*
 third_party/*
-pannot_empty/
+pannot_empty/*
+wandb/*
+logs/*
+local_pretrained_encoders/*
+local_pretrained_llm/*
+checkpoints/*
+.ipynb_checkpoints/*
+asset/*
+*/__pycache__/*
+*.pyc
+.gitignore
