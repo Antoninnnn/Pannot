@@ -93,6 +93,13 @@ deepspeed --hostfile ./scripts/hostfile.txt --num_gpus 2    pannot/train/train_m
 
 ```
 
+
+TO upload the local wandb record 
+```
+wandb sync offline-run-20250528_034900-dcplvyd3
+```
+
+
 ## Data interface 
 
 ### OPI
