@@ -1,0 +1,4 @@
+g020 slots=2
+g021 slots=2
+g022 slots=2
+g025 slots=2

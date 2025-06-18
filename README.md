@@ -75,6 +75,8 @@ Then add this to your environment:
 
 export PATH=$SCRATCH/local/pdsh/bin:$PATH
 ```
+
+
 ## Model
 test code on Grace
 ```
@@ -86,12 +88,25 @@ If you need to pretrain on multi-nodes cluster, you would probably need pdsh:
 conda install -c conda-forge pdsh
 ```
 
+## Training
 
+### Stage 1
 
 ```
 deepspeed --hostfile ./scripts/hostfile.txt --num_gpus 2    pannot/train/train_mem.py     --deepspeed ./scripts/zero2.json     --model_name_or_path local_pretrained_llm/$MODEL_VERSION     --version $PROMPT_VERSION     --data_path ${DATA_PATH}     --tune_mm_mlp_adapter True     --bf16 True     --output_dir ${OUTPUT_DIR}     --num_train_epochs 1     --per_device_train_batch_size 4     --per_device_eval_batch_size 4     --gradient_accumulation_steps 1     --evaluation_strategy "no"     --save_strategy "steps"     --save_steps 24000     --save_total_limit 1     --learning_rate 2e-3     --weight_decay 0.0     --warmup_ratio 0.03     --lr_scheduler_type "cosine"     --logging_steps 1     --tf32 True     --model_max_length 2048     --gradient_checkpointing True     --dataloader_num_workers 4     --lazy_preprocess True     --report_to wandb     --use_seq_tower True     --mm_seq_tower $SEQ_TOWER     --mm_seq_projector_type linear     --mm_seq_select_layer -1     --mm_seq_select_feature "cls"    --mm_seq_no_pooling True     --use_str_tower True     --mm_struc_tower $STR_TOWER     --mm_str_projector_type linear     --mm_str_select_layer -1     --mm_str_select_feature "residue" 
 
 ```
+
+
+TO upload the local wandb record 
+```
+wandb sync offline-run-20250528_034900-dcplvyd3
+```
+
+### Stage2
+
+
+
 
 ## Data interface 
 

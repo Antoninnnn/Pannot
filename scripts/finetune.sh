@@ -1,14 +1,14 @@
 #!/bin/bash
-#SBATCH --job-name=pannot_pretrain
-#SBATCH --output=logs/pannot_pretrain_%j.out
-#SBATCH --error=logs/pannot_pretrain_%j.err
+#SBATCH --job-name=pannot_finetune
+#SBATCH --output=logs/pannot_finetune_%j.out
+#SBATCH --error=logs/pannot_finetune_%j.err
 #SBATCH --partition=gpu
-#SBATCH --nodes=2
+#SBATCH --nodes=16
 #SBATCH --ntasks-per-node=2
 #SBATCH --cpus-per-task=16
 #SBATCH --gres=gpu:a100:2
 #SBATCH --mem=96G
-#SBATCH --time=72:00:00
+#SBATCH --time=96:00:00
 
 
 
@@ -16,6 +16,7 @@
 module purge
 module load CUDA/11.8.0 Anaconda3
 # eval "$(conda shell.bash hook)"
+
 
 # Set CUDA environment variables on Grace HPRC of TAMU
 export LD_LIBRARY_PATH=$EBROOTCUDA/lib64:$LD_LIBRARY_PATH
@@ -49,16 +50,16 @@ MODEL_VERSION=Meta-Llama-3.1-8B-Instruct
 PROMPT_VERSION=plain
 
 # Customize these:
-DATA_PATH=$SCRATCH/TAMU/PhD/Pannot/data/opi/OPI_full_1.61M_train.json
+DATA_PATH=$SCRATCH/TAMU/PhD/Pannot/data/opi/OPI_full_1.61M_train_converted.jsonl
 # DATA_PATH=$SCRATCH/TAMU/PhD/Pannot/data/opi/OPI_full_1.61M_train_first_10000.json
-OUTPUT_DIR=./checkpoints/pannot-${MODEL_VERSION}-pretrain-v01
+PRET_MODEL_DIR=./checkpoints/pannot-${MODEL_VERSION}-pretrain-v00
 SEQ_TOWER=ESM
 STR_TOWER=ESMIF
 
 echo "Running on $(hostname), node rank: $SLURM_NODEID, task rank: $SLURM_PROCID"
 echo "Using model: ${MODEL_VERSION}, prompt: ${PROMPT_VERSION}"
 echo "Output dir: ${OUTPUT_DIR}"
-echo "Using DeepSpeed config: ./scripts/zero2.json"
+echo "Using DeepSpeed config: ./scripts/zero3.json"
 
 
 export WANDB_API_KEY=c6da89ba565a8b25f5b18c6fb722e7ad6637d4de  # from wandb.ai/settings
@@ -67,22 +68,22 @@ export WANDB_DIR=$SCRATCH/wandb_logs
 
 # export CUDA_LAUNCH_BLOCKING=1
 deepspeed pannot/train/train_mem.py \
-    --deepspeed ./scripts/zero2.json \
-    --model_name_or_path local_pretrained_llm/$MODEL_VERSION \
+    --deepspeed ./scripts/zero3.json \
+    --model_name_or_path ${PRET_MODEL_DIR}/checkpoint-24000 \
+    --pretrain_mm_mlp_adapter ${PRET_MODEL_DIR}/mm_projector.bin \
+    --output_dir ./checkpoint/pannot-${MODEL_VERSION}-finetune-v00 \
     --version $PROMPT_VERSION \
     --data_path ${DATA_PATH} \
-    --tune_mm_mlp_adapter True \
     --bf16 True \
-    --output_dir ${OUTPUT_DIR} \
     --num_train_epochs 1 \
-    --per_device_train_batch_size 16 \
+    --per_device_train_batch_size 2 \
     --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 1 \
+    --gradient_accumulation_steps 2 \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
-    --save_steps 24000 \
+    --save_steps 50000 \
     --save_total_limit 1 \
-    --learning_rate 2e-3 \
+    --learning_rate 2e-5 \
     --weight_decay 0.0 \
     --warmup_ratio 0.03 \
     --lr_scheduler_type "cosine" \

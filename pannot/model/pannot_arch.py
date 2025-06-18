@@ -228,6 +228,9 @@ class PannotMetaForCausalLM(ABC):
 
     def encode_seqs(self, seqs, seq_attention_mask):
         seq_features = self.get_seq_tower()(seqs, seq_attention_mask)
+        # the data type match
+        seq_features = seq_features.to(dtype=self.get_model().mm_seq_projector.weight.dtype).to(self.device)
+        
         seq_features = self.get_model().mm_seq_projector(seq_features)
         return seq_features
 
@@ -359,8 +362,12 @@ class PannotMetaForCausalLM(ABC):
             #     lab.squeeze(0) if lab.dim() == 2 and lab.shape[0] == 1 else lab
             #     for lab in cur_label_segments
             # ]
+            # #torch.cat() returns a new tensor that doesn't require grad by default unless all inputs do.
 
-            final_embed = torch.cat(cur_embed_segments, dim=0).to(self.device)
+             #.to(device) may return a non-leaf tensor, so .requires_grad_() must be called after.
+
+             #/You don’t need to change anything else if all the cur_embed_segments (i.e., token embeddings, seq/str features) already require gradients.
+            final_embed = torch.cat(cur_embed_segments, dim=0).to(self.device).requires_grad_()
             final_labels = torch.cat(cur_label_segments, dim=0).to(self.device)
 
             new_input_embeds.append(final_embed)

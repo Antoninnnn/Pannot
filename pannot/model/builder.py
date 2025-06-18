@@ -23,6 +23,8 @@ from pannot.model import *
 from pannot.constants import IGNORE_INDEX, SEQ_TOKEN_INDEX, DEFAULT_SEQ_TOKEN, DEFAULT_SEQ_PATCH_TOKEN ,DEFAULT_SEQ_START_TOKEN ,DEFAULT_SEQ_END_TOKEN ,STR_TOKEN_INDEX ,DEFAULT_STR_TOKEN ,DEFAULT_STR_PATCH_TOKEN ,DEFAULT_STR_START_TOKEN ,DEFAULT_STR_END_TOKEN 
 
 
+
+
 def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, load_4bit=False, device_map="auto", device="cuda", use_flash_attn=False, **kwargs):
     kwargs = {"device_map": device_map, **kwargs}
 
@@ -65,6 +67,7 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
             cfg = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
             tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
             # instantiate base with that config
+            print("loading pannot from base model")
             model = ModelClass.from_pretrained(
                 model_base, config=cfg, low_cpu_mem_usage=True, **kwargs
             )
@@ -78,6 +81,8 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
                 model.get_model().embed_tokens.weight = torch.nn.Parameter(
                     torch.empty(tok_num, emb_dim, device=model.device, dtype=model.dtype)
                 )
+
+            from peft import PeftModel
 
             # load & merge the LoRA adapter
             print(f"→ Applying LoRA delta from {model_path}")

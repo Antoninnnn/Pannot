@@ -9,4 +9,5 @@ os.environ["WANDB_DIR"] = os.environ.get("SCRATCH", "/tmp") + "/wandb_logs"
 # Optional: keep if you ever switch to online
 os.environ["WANDB_API_KEY"] = "c6da89ba565a8b25f5b18c6fb722e7ad6637d4de"
 if __name__ == "__main__":
+    
     train(attn_implementation="flash_attention_2")

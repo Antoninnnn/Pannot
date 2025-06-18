@@ -1,7 +1,8 @@
 data/*
-third_party/*
+third-party/*
 pannot_empty/*
 wandb/*
+results/*
 logs/*
 local_pretrained_encoders/*
 local_pretrained_llm/*
@@ -11,3 +12,5 @@ asset/*
 */__pycache__/*
 *.pyc
 .gitignore
+.ipynb_checkpoints
+lCASPSimilarSeq_go_test.jsonlogs/*

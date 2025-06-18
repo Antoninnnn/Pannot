@@ -118,43 +118,96 @@ class PannotLlamaForCausalLM(LlamaForCausalLM, PannotMetaForCausalLM):
             return_dict=return_dict
         )
 
+    # @torch.no_grad()
+    # def generate(
+    #     self,
+    #     inputs: Optional[torch.LongTensor] = None,
+    #     seqs: Optional[List[torch.Tensor]] = None,
+    #     strs: Optional[List[torch.Tensor]] = None,
+    #     **kwargs,
+    # ) -> Union[GenerateOutput, torch.LongTensor]:
+    #     # pop out any kwargs to avoid collision
+    #     position_ids = kwargs.pop("position_ids", None)
+    #     attention_mask = kwargs.pop("attention_mask", None)
+    #     if "inputs_embeds" in kwargs:
+    #         raise NotImplementedError("`inputs_embeds` is not supported for PannotLlama")
+
+    #     # build inputs_embeds from seqs/strs
+    #     if seqs is not None or strs is not None:
+    #         (
+    #             inputs,
+    #             position_ids,
+    #             attention_mask,
+    #             _,
+    #             inputs_embeds,
+    #             _
+    #         ) = self.prepare_inputs_labels_for_multimodal(
+    #             inputs,
+    #             position_ids,
+    #             attention_mask,
+    #             None,
+    #             None,
+    #             seqs=seqs,
+    #             strs=strs,
+    #         )
+    #     else:
+    #         inputs_embeds = self.get_model().embed_tokens(inputs)
+
+    #     return super().generate(
+    #         inputs_embeds=inputs_embeds,
+    #         attention_mask=attention_mask,
+    #         position_ids=position_ids,
+    #         **kwargs
+    #     )
     @torch.no_grad()
     def generate(
         self,
         inputs: Optional[torch.LongTensor] = None,
         seqs: Optional[List[torch.Tensor]] = None,
+        seq_attention_mask: Optional[List[torch.Tensor]] = None,
         strs: Optional[List[torch.Tensor]] = None,
         **kwargs,
     ) -> Union[GenerateOutput, torch.LongTensor]:
-        # pop out any kwargs to avoid collision
+        # Pop out any kwargs to avoid collision
         position_ids = kwargs.pop("position_ids", None)
         attention_mask = kwargs.pop("attention_mask", None)
         if "inputs_embeds" in kwargs:
             raise NotImplementedError("`inputs_embeds` is not supported for PannotLlama")
 
-        # build inputs_embeds from seqs/strs
+        # Build inputs_embeds and optionally input_ids
         if seqs is not None or strs is not None:
             (
-                inputs,
+                input_ids,
                 position_ids,
                 attention_mask,
                 _,
                 inputs_embeds,
                 _
             ) = self.prepare_inputs_labels_for_multimodal(
-                inputs,
-                position_ids,
-                attention_mask,
-                None,
-                None,
+                input_ids=inputs,
+                position_ids=position_ids,
+                attention_mask=attention_mask,
+                past_key_values=None,
+                labels=None,
                 seqs=seqs,
+                seq_attention_mask=seq_attention_mask,
                 strs=strs,
             )
         else:
+            assert inputs is not None, "`inputs` must be provided when no seqs/strs"
+            input_ids = inputs
             inputs_embeds = self.get_model().embed_tokens(inputs)
+
+        # 🔐 Sanity check for token indices
+        vocab_size = self.get_model().embed_tokens.num_embeddings
+        print(inputs)
+        print(input_ids)
+        # if input_ids.max().item() >= vocab_size:
+        #     raise ValueError(f"Found token ID >= vocab size ({vocab_size}). Likely invalid tokenization.")
 
         return super().generate(
             inputs_embeds=inputs_embeds,
+            input_ids=input_ids,  # ✅ crucial to prevent HF from guessing input_ids
             attention_mask=attention_mask,
             position_ids=position_ids,
             **kwargs

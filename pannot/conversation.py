@@ -248,6 +248,9 @@ class Conversation:
             wrap_inst = lambda msg: f"[INST] {msg} [/INST]"
             ret = ""
             for i, (role, message) in enumerate(messages):
+                if message is None:
+                    # This is a placeholder for generation; skip formatting and do not append anything
+                    continue
                 formatted = self._format_message(message)
                 if i == 0:
                     assert role == self.roles[0], "First message must be from user"
