@@ -144,6 +144,12 @@ struct_coords
 
 
 #### Inference
+
+
+The code was adapted from `pannot/eval/eval_opi/eval_opi_dataset_pannot.py`. You could following procedures to inference test on Grace cluster(SLURM).
+
+For inference, the model could be accessed through https://huggingface.co/Yining04/Pannot_v0.0/tree/main
+
 Create a process for interactive inference
 ```shell
 srun --partition=gpu --gres=gpu:a100:1 --nodes=1 --ntasks=2 --cpus-per-task=4 --mem=96G --time=08:00:00 --pty bash
