@@ -37,6 +37,7 @@ dependencies = [
   "pydantic",
   "markdown2[all]",
   "numpy",
+  "sympy==1.12",
   "scikit-learn==1.2.2",
   "gradio==4.16.0",
   "gradio_client==0.8.1",
@@ -65,6 +66,9 @@ train = [
   "deepspeed==0.12.6",
   "ninja",
   "wandb"
+]
+triton=[
+  "triton==2.1.0"
 ]
 build = [
   "build",

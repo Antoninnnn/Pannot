@@ -1,0 +1,80 @@
+
+# module purge
+# module load CUDA/11.8.0 Anaconda3
+# # eval "$(conda shell.bash hook)"
+
+# # For multi nodes training, you need to set the following packages :
+# ml GCC/10.3.0 
+
+# # # Create a build directory
+# # mkdir -p $SCRATCH/pdsh_build && cd $SCRATCH/pdsh_build
+
+# # # Download the latest pdsh source
+# # wget https://github.com/chaos/pdsh/releases/download/pdsh-2.34/pdsh-2.34.tar.gz
+
+# # # Extract it
+# # tar -xvzf pdsh-2.34.tar.gz
+# # cd pdsh-2.34
+
+# # # Configure installation prefix (choose your install path)
+# # ./configure --prefix=$SCRATCH/local/pdsh
+
+# # # Build and install
+# # make -j
+# # make install
+# # # ml OpenMPI/4.1.1
+
+# export PATH=$SCRATCH/local/pdsh/bin:$PATH
+
+# # Set CUDA environment variables on Grace HPRC of TAMU
+# export LD_LIBRARY_PATH=$EBROOTCUDA/lib64:$LD_LIBRARY_PATH
+
+# # Set Hugging Face cache directory to a writable location
+# export HF_HOME=$SCRATCH/hf_cache
+
+# #Set the Torch cache directory in the $SCRATCH
+
+# export TORCH_HOME=$SCRATCH/.cache/torch
+
+# # # # Set the Torch cache directory in the $SCRATCH for every node
+# # NODES=$(scontrol show hostnames $SLURM_JOB_NODELIST | paste -sd, -)
+# # pdsh -R ssh -w $NODES "export TORCH_HOME=$SCRATCH/.cache/torch; echo \$HOSTNAME uses \$TORCH_HOME"
+
+
+# # # Create the directory if it doesn't exist
+# # mkdir -p $TRANSFORMERS_CACHE
+
+
+# source activate pannot-dev
+
+# # # The reason I deactivate and activate again is that 
+# # # I want to make sure the python is used in the environment,
+# # # not the one in the system.
+# # # (the problem would occur when i activate and directly call python)
+# conda deactivate 
+
+# source activate pannot-dev
+
+
+# # Example: Pannot pretraining script (multimodal: protein sequence + structure)
+# # Be sure to set these environment variables or modify inline:
+
+# MODEL_VERSION=Meta-Llama-3.1-8B-Instruct
+# PROMPT_VERSION=plain
+
+# # Customize these:
+# # DATA_PATH=$SCRATCH/TAMU/PhD/Pannot/data/opi/OPI_full_1.61M_train_first_10000.json
+# DATA_PATH=$SCRATCH/TAMU/PhD/Pannot/data/opi/OPI_full_1.61M_train_converted.jsonl
+# OUTPUT_DIR=./checkpoints/pannot-${MODEL_VERSION}-pretrain-v00
+# SEQ_TOWER=ESM
+# STR_TOWER=ESMIF
+
+# echo "Running on $(hostname), node rank: $SLURM_NODEID, task rank: $SLURM_PROCID"
+# echo "Using model: ${MODEL_VERSION}, prompt: ${PROMPT_VERSION}"
+# echo "Output dir: ${OUTPUT_DIR}"
+# echo "Using DeepSpeed config: ./scripts/zero2.json"
+
+
+# export WANDB_API_KEY=c6da89ba565a8b25f5b18c6fb722e7ad6637d4de  # from wandb.ai/settings
+# export WANDB_MODE=offline  # or remove this if online logging is available
+# export WANDB_DIR=$SCRATCH/wandb_logs

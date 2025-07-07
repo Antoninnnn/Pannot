@@ -38,7 +38,7 @@ CUDA_VISIBLE_DEVICES=0 python pannot/eval/eval_opi/eval_opi_dataset_pannot.py \
    --model-path /scratch/user/yining_yang/TAMU/PhD/Pannot/checkpoints/pannot-Meta-Llama-3.1-8B-Instruct-finetune-lora-v00 \
    --model-base /scratch/user/yining_yang/TAMU/PhD/Pannot/checkpoints/pannot-Meta-Llama-3.1-8B-Instruct-pretrain-v00/checkpoint-24000\
    --temperature 0.2 \
-   --top_p 0.9 \
+   --top_p 0.75 \
    --num_beams 1 \
-   --max_new_tokens 2048 \
+   --max_new_tokens 400 \
       # --model-base /local_pretrained_llm/$MODEL_VERSION \
