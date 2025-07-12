@@ -8,11 +8,16 @@ from PIL import Image
 
 class SeparatorStyle(Enum):
     """Different separator style."""
+
     SINGLE = auto()
     TWO = auto()
     MPT = auto()
     PLAIN = auto()
+    CHATML = auto()
     LLAMA_2 = auto()
+    LLAMA_3 = auto()
+    QWEN = auto()
+    GEMMA = auto()
 
 
 # @dataclasses.dataclass
@@ -260,6 +265,33 @@ class Conversation:
                 else:
                     ret += " " + formatted + " " + (self.sep2 or self.sep)
             ret = ret.lstrip(self.sep)
+
+
+        elif self.sep_style == SeparatorStyle.GEMMA:
+            ret = ""
+            for i, (role, message) in enumerate(messages):
+                assert role == self.roles[i % 2], "Roles must alternate"
+                content = self._format_message(message)
+                ret += role + content + self.sep if content else role
+
+        elif self.sep_style == SeparatorStyle.CHATML:
+            ret = "" if self.system == "" else self.system + self.sep + "\n"
+            for role, message in messages:
+                content = self._format_message(message)
+                ret += role + "\n" + content + self.sep + "\n" if content else role + "\n"
+
+        elif self.sep_style == SeparatorStyle.LLAMA_3:
+            if not hasattr(self, "tokenizer") or self.tokenizer is None:
+                raise ValueError("Tokenizer required for LLAMA_3 style.")
+
+            chat_template_messages = [{"role": "system", "content": self.system}]
+            for role, message in messages:
+                content = self._format_message(message)
+                chat_template_messages.append({"role": role.lower(), "content": content})
+            return self.tokenizer.apply_chat_template(
+                chat_template_messages, tokenize=False, add_generation_prompt=True
+            )
+        
         elif self.sep_style == SeparatorStyle.MPT:
             ret = self.system + self.sep
             for role, message in messages:
@@ -269,14 +301,18 @@ class Conversation:
         return ret
 
     def _format_message(self, message: Union[str, ProteinInput]) -> str:
-        if isinstance(message, ProteinInput):
-            lines = [f"<seq> {message.sequence} </seq>"]
-            if message.structure:
-                lines.append(f"<str> {message.structure} </str>")
-            if message.annotations:
-                lines.append(f"<anno> {message.annotations} </anno>")
-            return "\n".join(lines)
-        return message
+        if isinstance(msg, ProteinInput):
+            fields = []
+            if msg.sequence:
+                fields.append(f"<seq> {msg.sequence} </seq>")
+            if msg.structure:
+                fields.append(f"<str> {msg.structure} </str>")
+            if msg.annotations:
+                fields.append(f"<anno> {msg.annotations} </anno>")
+            return "\n".join(fields)
+            # return "\n".join(fields) if fields else "<empty_protein_input>"
+
+        return msg
 
     def append_message(self, role: str, message: Union[str, ProteinInput]):
         self.messages.append([role, message])
@@ -485,6 +521,20 @@ conv_llava_v1_mmtag = Conversation(
     version="v1_mmtag",
 )
 
+conv_pannot_llama_3 = Conversation(
+    system="You are a helpful protein multimodal (sequence and structure) assistant. " "You are able to understand the protein content that the user provides, " "and assist the user with a variety of tasks using natural language.""The protein content will be provided with the following format: <seq_start>protein sequence content<seq_end>, <str_start>protein structure content<str_end>.",
+    roles=("user", "assistant"),
+    version="pannot_v3",
+    messages=[],
+    offset=0,
+    sep="<|eot_id|>",
+    sep_style=SeparatorStyle.LLAMA_3,
+    # tokenizer_id="meta-llama/Meta-Llama-3-8B-Instruct",
+    # tokenizer=safe_load_tokenizer("meta-llama/Meta-Llama-3-8B-Instruct"),
+    # stop_token_ids=[128009],
+)
+
+
 conv_pannot_v1_mmtag = Conversation(
     system="A chat between a curious user and an artificial intelligence assistant. "
            "The assistant is able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language."
@@ -520,7 +570,8 @@ Answer the questions.""",
     sep="<|im_end|>",
 )
 
-default_conversation = conv_vicuna_v1
+# default_conversation = conv_vicuna_v1
+default_conversation = conv_pannot_llama_3
 conv_templates = {
     "default": conv_vicuna_v0,
     "v0": conv_vicuna_v0,
@@ -545,6 +596,7 @@ conv_templates = {
     "v1_mmtag": conv_pannot_v1_mmtag,
     "llava_llama_2": conv_llava_llama_2,
     "pannot_llama_2": conv_pannot_llama_2,
+    "pannot_llama_3": conv_pannot_llama_3,
 
     "mpt": conv_mpt,
 }
