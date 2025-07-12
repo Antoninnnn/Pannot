@@ -61,6 +61,44 @@ combined = torch.cat([token_embeds, seq_embeds], dim=0)
 
 # 4. PCA to 2D
 pca = PCA(n_components=2)
+combined_2d = pca.fit_transform(token_embeds)
+
+# 5. Split
+n_vocab = token_embeds.shape[0]
+token_2d = combined_2d[:n_vocab]
+seq_2d = combined_2d[n_vocab:]
+
+# 6. Plot
+plt.figure(figsize=(10, 8))
+plt.scatter(token_2d[:, 0], token_2d[:, 1], s=5, alpha=0.6, label="LLaMA3 Token Embeddings")
+plt.scatter(seq_2d[:, 0], seq_2d[:, 1], c=range(len(seq_2d)), cmap="viridis", s=30, label="Protein Sequence Embedding")
+plt.colorbar(label="Amino Acid Position")
+plt.legend()
+plt.title("Protein Sequence Embeddings in LLaMA3 Token Embedding Space with pca on lm")
+plt.savefig("asset/imgs/embedding_in_llama3_token_space_lm_pca.png", dpi=300)
+print("✅ Saved to embedding_in_llama3_token_space.png")
+
+#############  
+
+# 1. Get token embedding matrix (e.g., 128K x 4096)
+token_embeds = model.model.embed_tokens.weight.detach().cpu()
+
+# 2. Get sequence embeddings from your protein
+seq_embeds =model.encode_seqs(seq_input_id, seq_attention_mask=seq_attention_mask).squeeze(0).cpu()
+# Assume seq_embeds is fp16 on CUDA
+ln = torch.nn.LayerNorm(
+    seq_fp32.shape[-1],
+    dtype=seq_fp32.dtype,
+    device=seq_fp32.device
+)
+post_ln_fp32 = ln(seq_fp32)
+
+
+# 3. Combine them
+combined = torch.cat([token_embeds, post_ln_fp32.detach()], dim=0)
+
+# 4. PCA to 2D
+pca = PCA(n_components=2)
 combined_2d = pca.fit_transform(combined)
 
 # 5. Split
@@ -70,10 +108,12 @@ seq_2d = combined_2d[n_vocab:]
 
 # 6. Plot
 plt.figure(figsize=(10, 8))
-plt.scatter(token_2d[:, 0], token_2d[:, 1], s=1, alpha=0.2, label="LLaMA3 Token Embeddings")
+plt.scatter(token_2d[:, 0], token_2d[:, 1], s=5, alpha=0.6, label="LLaMA3 Token Embeddings")
 plt.scatter(seq_2d[:, 0], seq_2d[:, 1], c=range(len(seq_2d)), cmap="viridis", s=30, label="Protein Sequence Embedding")
 plt.colorbar(label="Amino Acid Position")
 plt.legend()
-plt.title("Protein Sequence Embeddings in LLaMA3 Token Embedding Space")
-plt.savefig("asset/imgs/embedding_in_llama3_token_space.png", dpi=300)
+plt.title("Protein Sequence Embeddings in LLaMA3 Token Embedding Space with pca on lm")
+plt.savefig("asset/imgs/embedding_in_llama3_token_space_postln_lm_pca.png", dpi=300)
 print("✅ Saved to embedding_in_llama3_token_space.png")
+
+#############  

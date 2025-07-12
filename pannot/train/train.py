@@ -42,7 +42,17 @@ local_rank = None
 
 
 def rank0_print(*args):
-    if local_rank == 0:
+    if dist.is_initialized():
+        if dist.get_rank() == 0:
+            print(f"Rank {dist.get_rank()}: ", *args)
+    else:
+        print(*args)
+
+
+def rank_print(*args):
+    if dist.is_initialized():
+        print(f"Rank {dist.get_rank()}: ", *args)
+    else:
         print(*args)
 
 
@@ -747,6 +757,94 @@ def preprocess_llama_2_protein(sources, tokenizer, has_protein=True) -> Dict:
 
     return dict(input_ids=input_ids, labels=targets)
 
+
+def preprocess_llama3_protein(
+    sources,
+    tokenizer: transformers.PreTrainedTokenizer,
+    has_protein: bool = True,
+    max_len=2048,
+    system_message: str = "You are a helpful assistant for protein sequences and structures. You can understand protein inputs like <seq> and <str>, and assist users in scientific tasks."
+) -> Dict:
+    import copy
+
+    roles = {"human": "user", "gpt": "assistant"}
+
+    tokenizer = copy.deepcopy(tokenizer)
+
+    if has_protein:
+        tokenizer.add_tokens(["<seq>", "<str>"], special_tokens=True)
+
+    # Token IDs
+    seq_token_idx = tokenizer.convert_tokens_to_ids("<seq>")
+    str_token_idx = tokenizer.convert_tokens_to_ids("<str>")
+    bos_token_id = tokenizer.convert_tokens_to_ids("<|begin_of_text|>")
+    start_header_id = tokenizer.convert_tokens_to_ids("<|start_header_id|>")
+    end_header_id = tokenizer.convert_tokens_to_ids("<|end_header_id|>")
+    eot_id = tokenizer.convert_tokens_to_ids("<|eot_id|>")
+
+    unmask_tokens = ["<|begin_of_text|>", "<|start_header_id|>", "<|end_header_id|>", "<|eot_id|>", "\n\n"]
+    unmask_tokens_idx = [tokenizer.convert_tokens_to_ids(tok) for tok in unmask_tokens]
+
+    # Tokenizer fix for LLaMA 3 BOS handling
+    def safe_tokenizer_llama3(text):
+        ids = tokenizer(text).input_ids
+        return ids[1:] if ids and ids[0] == bos_token_id else ids
+
+    input_ids, targets = [], []
+
+    for i, source in enumerate(sources):
+        if roles[source[0]["from"]] != roles["human"]:
+            source = source[1:]
+
+        input_id, target = [], []
+
+        # Add system message
+        input_id += tokenizer.apply_chat_template([{"role": "system", "content": system_message}])
+        target += [IGNORE_INDEX] * len(input_id)
+
+        for conv in source:
+            # Handle both "from"/"value" and "role"/"content" formats
+            try:
+                role = conv["role"]
+                content = conv["content"]
+            except:
+                role = conv["from"]
+                content = conv["value"]
+
+            role = roles.get(role, role)
+            conv = [{"role": role, "content": content}]
+
+            encode_id = tokenizer.apply_chat_template(conv)[1:]  # skip BOS
+            input_id += encode_id
+
+            if role in ["user", "system"]:
+                target += [IGNORE_INDEX] * len(encode_id)
+            else:
+                target += encode_id
+
+        assert len(input_id) == len(target), f"{len(input_id)} != {len(target)}"
+
+        # Final adjustments
+        for idx, tok in enumerate(input_id):
+            if tok in unmask_tokens_idx:
+                target[idx] = tok
+            if tok == seq_token_idx:
+                input_id[idx] = SEQ_TOKEN_INDEX
+            if tok == str_token_idx:
+                input_id[idx] = STR_TOKEN_INDEX
+
+        input_ids.append(input_id)
+        targets.append(target)
+
+    input_ids = torch.tensor(input_ids, dtype=torch.long)
+    targets = torch.tensor(targets, dtype=torch.long)
+
+    return dict(
+        input_ids=input_ids,  # shape (batch_size, seq_len)
+        labels=targets,       # shape (batch_size, seq_len)
+    )
+
+
 def preprocess_v1_protein(sources, tokenizer, has_protein=True) -> Dict:
     conv = conversation_lib.default_conversation.copy()
     roles = {"human": conv.roles[0], "gpt": conv.roles[1]}
@@ -929,6 +1027,10 @@ def preprocess(
 
     if conversation_lib.default_conversation.version == "mpt":
         return preprocess_mpt_protein(sources, tokenizer, has_protein=has_protein)
+    
+    if conversation_lib.default_conversation.version == "llama_v3":
+        return preprocess_llama3(sources, tokenizer, has_image=has_image)
+    
     # add end signal and concatenate together
     conversations = []
     for source in sources:
@@ -996,7 +1098,19 @@ class LazySupervisedProteinDataset(Dataset):
                  struc_tower=None):
         super().__init__()
         with open(data_path, 'r') as f:
-            self.list_data_dict = [json.loads(line) for line in f if line.strip()]
+            raw_data = [json.loads(line) for line in f if line.strip()]
+        
+            # Filter out invalid protein sequences
+        self.list_data_dict = []
+        for item in raw_data:
+            input_seq = item.get("input", None)
+            if input_seq is None or self.is_valid_protein_sequence(input_seq):
+                if len(input_seq)>10:
+                    self.list_data_dict.append(item)
+            else:
+                print(f"[SKIP] Invalid protein sequence: {input_seq[:30]}...")
+
+        
         self.tokenizer = tokenizer
         self.data_args = data_args
         self.seq_tower = seq_tower  # Should have .tokenize()
@@ -1004,6 +1118,12 @@ class LazySupervisedProteinDataset(Dataset):
 
     def __len__(self):
         return len(self.list_data_dict)
+
+    @staticmethod
+    def is_valid_protein_sequence(seq: str) -> bool:
+        valid_chars = set("ACDEFGHIKLMNPQRSTVWYBXZOU")
+        seq = seq.strip().upper()
+        return all(char in valid_chars for char in seq)
 
     @property
     def lengths(self):
@@ -1306,7 +1426,7 @@ def train(attn_implementation=None):
             padding_side="right",
             use_fast=False,
         )
-
+    rank0_print(f"Prompt version: {model_args.version}")
     if model_args.version == "v0":
         if tokenizer.pad_token is None:
             smart_tokenizer_and_embedding_resize(
@@ -1317,16 +1437,23 @@ def train(attn_implementation=None):
             print("the pad token added")
     elif model_args.version == "v0.5":
         tokenizer.pad_token = tokenizer.unk_token
+
+    elif any(keyword in model_args.model_name_or_path.lower() for keyword in ['llama-3', 'llama3', 'llama_3']):
+        tokenizer.pad_token = tokenizer.eos_token
+    
     else:
-        tokenizer.pad_token = tokenizer.unk_token
+        if tokenizer.unk_token is not None:
+            tokenizer.pad_token = tokenizer.unk_token
+        
+
         if model_args.version in conversation_lib.conv_templates:
             conversation_lib.default_conversation = conversation_lib.conv_templates[model_args.version]
         else:
             conversation_lib.default_conversation = conversation_lib.conv_templates["vicuna_v1"]
     if tokenizer.pad_token is None:
-        print(f"Adding pad token as '<pad>'")
+        print(f"Adding pad token as '[pad]' with force")
         smart_tokenizer_and_embedding_resize(
-            special_tokens_dict=dict(pad_token="<pad>"),
+            special_tokens_dict=dict(pad_token="[PAD]"),
             tokenizer=tokenizer,
             model=model,
         )

@@ -79,14 +79,14 @@ PROMPT_VERSION=plain
 # Customize these:
 # DATA_PATH=$SCRATCH/TAMU/PhD/Pannot/data/opi/OPI_full_1.61M_train_first_10000.json
 DATA_PATH=$SCRATCH/TAMU/PhD/Pannot/data/opi/OPI_full_1.61M_train_converted.jsonl
-OUTPUT_DIR=./checkpoints/pannot-${MODEL_VERSION}-pretrain-v00
+OUTPUT_DIR=./checkpoints/pannot-${MODEL_VERSION}-pretrain-v02
 SEQ_TOWER=ESM
 STR_TOWER=ESMIF
 
 echo "Running on $(hostname), node rank: $SLURM_NODEID, task rank: $SLURM_PROCID"
 echo "Using model: ${MODEL_VERSION}, prompt: ${PROMPT_VERSION}"
 echo "Output dir: ${OUTPUT_DIR}"
-echo "Using DeepSpeed config: ./scripts/zero2.json"
+echo "Using DeepSpeed config: ./scripts/zero3.json"
 
 
 export WANDB_API_KEY=c6da89ba565a8b25f5b18c6fb722e7ad6637d4de  # from wandb.ai/settings
@@ -113,7 +113,7 @@ deepspeed --hostfile ./scripts/hostfile.txt --num_gpus 2\
     --gradient_accumulation_steps 2 \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
-    --save_steps 24000 \
+    --save_steps 25000 \
     --save_total_limit 1 \
     --learning_rate 2e-3 \
     --weight_decay 0.0 \
