@@ -98,7 +98,7 @@ class PannotLlamaForCausalLM(LlamaForCausalLM, PannotMetaForCausalLM):
                 attention_mask=attention_mask,
                 past_key_values=past_key_values,
                 labels=labels,
-                seqs=seqs,
+                # seqs=seqs,
                 # strs=strs,
                 seqs=seq_input_ids,
                 seq_attention_mask=seq_attention_mask,
