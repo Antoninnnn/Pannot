@@ -38,6 +38,8 @@ from pannot.mm_utils import tokenizer_protein_token
 from PIL import Image
 
 
+import torch.distributed as dist
+
 local_rank = None
 
 

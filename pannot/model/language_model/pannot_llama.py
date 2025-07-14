@@ -33,12 +33,19 @@ class PannotConfig(LlamaConfig):
     ## Llama3 's config has a rope_scaling need to be patched, it can not be dealt with transformers lib(v4.37.0)
     def __init__(self, **kwargs):
         # Patch rope_scaling before initializing
+        # rope_scaling = kwargs.get("rope_scaling", None)
+        #if isinstance(rope_scaling, dict) and "type" not in rope_scaling:
+        #    kwargs["rope_scaling"] = {
+        #        "type": "linear",
+        #        "factor": rope_scaling.get("factor", 1.0)
+        #    }
+                # Patch rope_scaling before initializing
         rope_scaling = kwargs.get("rope_scaling", None)
-        if isinstance(rope_scaling, dict) and "type" not in rope_scaling:
-            kwargs["rope_scaling"] = {
-                "type": "linear",
-                "factor": rope_scaling.get("factor", 1.0)
-            }
+        if isinstance(rope_scaling, dict):
+            if "type" not in rope_scaling and "rope_type" in rope_scaling:
+                # migrate rope_type → type
+                rope_scaling["type"] = rope_scaling["rope_type"]
+            kwargs["rope_scaling"] = rope_scaling
         super().__init__(**kwargs)
 
 class PannotLlamaModel(PannotMetaModel, LlamaModel):

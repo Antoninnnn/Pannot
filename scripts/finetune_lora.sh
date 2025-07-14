@@ -53,7 +53,7 @@ PROMPT_VERSION=plain
 # Customize these:
 DATA_PATH=$SCRATCH/TAMU/PhD/Pannot/data/opi/OPI_full_1.61M_train_converted.jsonl
 # DATA_PATH=$SCRATCH/TAMU/PhD/Pannot/data/opi/OPI_full_1.61M_train_first_10000.json
-PRET_MODEL_DIR=./checkpoints/pannot-${MODEL_VERSION}-pretrain-v00
+PRET_MODEL_DIR=./checkpoints/pannot-${MODEL_VERSION}-pretrain-v02
 SEQ_TOWER=ESM
 STR_TOWER=ESMIF
 
@@ -66,6 +66,7 @@ echo "Using DeepSpeed config: ./scripts/zero3.json"
 export WANDB_API_KEY=c6da89ba565a8b25f5b18c6fb722e7ad6637d4de  # from wandb.ai/settings
 export WANDB_MODE=offline  # or remove this if online logging is available
 export WANDB_DIR=$SCRATCH/wandb_logs
+export WANDB_CACHE_DIR=$SCRATCH/wandb_cache
 
 echo "[INFO] Writing hostfile:"
 scontrol show hostnames $SLURM_NODELIST | sed 's/$/ slots=2/' > scripts/hostfile.txt
@@ -75,7 +76,7 @@ deepspeed --hostfile ./scripts/hostfile.txt --num_gpus 2\
 	pannot/train/train_mem.py \
     --deepspeed ./scripts/zero3.json \
     --lora_enable True \
-    --model_name_or_path ${PRET_MODEL_DIR}/checkpoint-24000 \
+    --model_name_or_path local_pretrained_llm/${MODEL_VERSION} \
     --pretrain_mm_mlp_adapter ${PRET_MODEL_DIR}/mm_projector.bin \
     --output_dir ./checkpoints/pannot-${MODEL_VERSION}-finetune-v00 \
     --version $PROMPT_VERSION \
@@ -110,4 +111,5 @@ deepspeed --hostfile ./scripts/hostfile.txt --num_gpus 2\
     --mm_struc_tower $STR_TOWER \
     --mm_str_projector_type linear \
     --mm_str_select_layer -1 \
-    --mm_str_select_feature "residue"
+    --mm_str_select_feature "residue"\
+    # --model_name_or_path /scratch/user/yining_yang/TAMU/PhD/Pannot/checkpoints/pannot-Meta-Llama-3.1-8B-Instruct-pretrain-v02/checkpoint-25053

@@ -3,6 +3,7 @@
 #SBATCH --output=logs/pannot_pretrain_%j.out
 #SBATCH --error=logs/pannot_pretrain_%j.err
 #SBATCH --partition=gpu
+#SBATCH --exclude=g017
 #SBATCH --nodes=8
 #SBATCH --ntasks-per-node=2
 #SBATCH --cpus-per-task=16
@@ -86,12 +87,13 @@ STR_TOWER=ESMIF
 echo "Running on $(hostname), node rank: $SLURM_NODEID, task rank: $SLURM_PROCID"
 echo "Using model: ${MODEL_VERSION}, prompt: ${PROMPT_VERSION}"
 echo "Output dir: ${OUTPUT_DIR}"
-echo "Using DeepSpeed config: ./scripts/zero3.json"
+echo "Using DeepSpeed config: ./scripts/zero2.json"
 
 
 export WANDB_API_KEY=c6da89ba565a8b25f5b18c6fb722e7ad6637d4de  # from wandb.ai/settings
 export WANDB_MODE=offline  # or remove this if online logging is available
 export WANDB_DIR=$SCRATCH/wandb_logs
+export WANDB_CACHE_DIR=$SCRATCH/wandb_cache
 
 echo "[INFO] Writing hostfile:"
 scontrol show hostnames $SLURM_NODELIST | sed 's/$/ slots=2/' > scripts/hostfile.txt
@@ -100,7 +102,7 @@ scontrol show hostnames $SLURM_NODELIST | sed 's/$/ slots=2/' > scripts/hostfile
 
 deepspeed --hostfile ./scripts/hostfile.txt --num_gpus 2\
     pannot/train/train_mem.py \
-    --deepspeed ./scripts/zero3.json \
+    --deepspeed ./scripts/zero2.json \
     --model_name_or_path local_pretrained_llm/$MODEL_VERSION \
     --version $PROMPT_VERSION \
     --data_path ${DATA_PATH} \
@@ -119,7 +121,7 @@ deepspeed --hostfile ./scripts/hostfile.txt --num_gpus 2\
     --weight_decay 0.0 \
     --warmup_ratio 0.03 \
     --lr_scheduler_type "cosine" \
-    --logging_steps 1 \
+    --logging_steps 5 \
     --tf32 True \
     --model_max_length 2048 \
     --gradient_checkpointing True \
@@ -129,7 +131,7 @@ deepspeed --hostfile ./scripts/hostfile.txt --num_gpus 2\
     --use_seq_tower True \
     --mm_seq_tower $SEQ_TOWER \
     --mm_seq_projector_type linear \
-    --mm_seq_select_layer -1 \
+    --mm_seq_select_layer -2 \
     --mm_seq_select_feature "cls"\
     --mm_seq_no_pooling True \
     --use_str_tower True \
